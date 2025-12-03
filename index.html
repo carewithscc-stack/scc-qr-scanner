@@ -50,6 +50,13 @@
 <body>
 
 <div class="p-4 sm:p-6 max-w-lg mx-auto">
+    
+    <!-- SPANDUK PERINGATAN HTTPS BARU -->
+    <div id="https-warning" class="bg-red-500 text-white p-3 rounded-lg text-center font-bold mb-4 shadow-xl hidden">
+        <p class="text-lg">‼️ PERINGATAN KRITIS ‼️</p>
+        <p class="mt-1">Akses Kamera DIBLOKIR. Anda HARUS menggunakan URL HTTPS untuk mengaktifkan scanner.</p>
+    </div>
+    
     <header class="text-center mb-4">
         <h1 class="text-3xl font-extrabold text-blue-800">SCC Tracker</h1>
         <p class="text-gray-600 mt-1">Pindai QR Code & Perbarui Status</p>
@@ -62,15 +69,11 @@
 
     <!-- Area Kontrol Kamera dan Status Izin -->
     <div id="camera-controls" class="bg-white p-4 rounded-xl shadow-lg mb-4">
-        <!-- Status Izin Kamera Dihapus, digabungkan ke #status-feedback -->
-
-        <label for="camera-select" class="block text-sm font-semibold text-gray-700 mb-2">Pilih Kamera (jika tersedia):</label>
-        <select id="camera-select" disabled class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-600">
-            <option value="">Tidak ada kamera terdeteksi</option>
-        </select>
         
-        <!-- Tombol baru untuk kontrol kamera -->
-        <button id="camera-restart-btn" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm">
+        <!-- Dropdown pemilihan kamera dihapus untuk menyederhanakan UI -->
+        
+        <!-- Tombol untuk kontrol kamera tetap dipertahankan -->
+        <button id="camera-restart-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm">
             Cek & Mulai Ulang Kamera
         </button>
     </div>
@@ -125,17 +128,18 @@
 
     let selectedAction = null;
     let html5QrcodeScanner = null;
-    let currentCameraId = null;
-    const DEBOUNCE_TIME_MS = 1500; // Mengurangi dari 3000ms ke 1500ms agar restart/reset UI lebih cepat
-    const DEDUPE_TIME_MS = 5000; // Waktu tunggu untuk mencegah scan QR Code yang sama berulang.
+    let currentCameraId = null; // Tidak digunakan lagi, tapi dipertahankan untuk kompatibilitas fungsi
+    const DEBOUNCE_TIME_MS = 1500; 
+    const DEDUPE_TIME_MS = 5000; 
 
     const statusFeedbackEl = document.getElementById('status-feedback');
     const selectedActionEl = document.getElementById('selected-action');
     const actionButtons = document.querySelectorAll('.action-btn');
-    const cameraSelect = document.getElementById('camera-select');
+    // const cameraSelect = document.getElementById('camera-select'); // Dihapus
     const logAreaEl = document.getElementById('log-area');
     const cameraRestartBtn = document.getElementById('camera-restart-btn');
     const readerEl = document.getElementById('reader');
+    const httpsWarningEl = document.getElementById('https-warning'); 
 
     /* --- SISTEM LOGGING DAN STATUS --- */
 
@@ -213,13 +217,12 @@
     /* --- LOGIKA SCANNER --- */
 
     // Menghentikan dan membersihkan scanner
-    // Menambahkan flag isRestarting untuk mencegah update status yang tidak perlu
     function stopScanner(isRestarting = false) {
         if (html5QrcodeScanner) {
             setStatus('Menghentikan scanner...');
             html5QrcodeScanner.clear().then(() => {
                 html5QrcodeScanner = null; 
-                if (!isRestarting) { // Hanya update status jika BUKAN untuk restart/init
+                if (!isRestarting) { 
                     setStatus('Scanner dihentikan.', 'info');
                     setReaderPlaceholder('Scanner dihentikan. Silakan pilih aksi dan mulai lagi.');
                 } else {
@@ -232,136 +235,87 @@
                 setReaderPlaceholder('Gagal menghentikan scanner. Coba tekan "Cek & Mulai Ulang Kamera".');
             });
         } else {
-             // Hanya tampilkan placeholder jika bukan bagian dari proses restart
              if (!isRestarting) {
                  setReaderPlaceholder('Scanner tidak aktif. Silakan mulai dengan tombol "Cek & Mulai Ulang Kamera".');
              }
         }
     }
     
-    // Inisialisasi Scanner dengan Camera ID tertentu
-    function initScanner(cameraId) {
-        // Panggil dengan true untuk menekan pesan "Scanner dihentikan"
-        stopScanner(true); 
+    // Inisialisasi Scanner. Karena sudah disederhanakan, kita hanya fokus ke facingMode.
+    function initScanner() {
+        // Jika protokol bukan HTTPS, jangan coba inisialisasi scanner.
+        if (location.protocol !== 'https:') {
+            setStatus('❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.', 'error');
+            setReaderPlaceholder('GAGAL. Akses via HTTPS diperlukan.');
+            return;
+        }
         
-        currentCameraId = cameraId;
+        stopScanner(true); 
         
         setReaderPlaceholder('Memulai kamera... (Izinkan akses jika diminta)');
 
-        // Konfigurasi Video Constraints untuk stabilitas (mengatasi forced close di mobile)
+        // Gunakan video constraints paling dasar untuk kamera belakang/luar
         let videoConstraints = {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "environment" // Default: Prioritaskan kamera belakang
+            width: { ideal: 640 }, 
+            height: { ideal: 480 }, 
+            facingMode: "environment" // Selalu prioritaskan kamera belakang (belakang/luar)
         };
-
-        if (cameraId) {
-            // Jika ID spesifik dipilih, gunakan ID tersebut dan hapus facingMode
-            videoConstraints.deviceId = { exact: cameraId };
-            delete videoConstraints.facingMode;
-        }
 
         const config = { 
             fps: 10, 
             qrbox: { width: 250, height: 250 }, 
-            videoConstraints: videoConstraints // Tambahkan constraints ke constructor config
+            videoConstraints: videoConstraints
         };
         
         html5QrcodeScanner = new Html5QrcodeScanner(
             "reader", 
-            config, // Gunakan config yang diperbarui dengan videoConstraints
+            config, 
             /* verbose= */ false
         );
 
-        // Status "Memulai kamera..." akan menimpa status "Menghentikan scanner..."
         setStatus('Memulai kamera...');
         
         html5QrcodeScanner.render(
             onScanSuccess, 
-            // Error handling khusus untuk rendering/startup kamera
             (errorMessage) => {
-                // Ini akan dipanggil jika kamera benar-benar gagal untuk start
-                if(html5QrcodeScanner && html5QrcodeScanner.getState() !== 2) { // State 2: Scanning
+                if(html5QrcodeScanner && html5QrcodeScanner.getState() !== 2) { 
                     LOG("Gagal memulai kamera: " + errorMessage, 'e');
                     
                     let statusText = '❌ Gagal memulai kamera. Mohon cek izin dan tekan "Cek & Mulai Ulang Kamera".';
-                    let readerText = 'GAGAL MEMULAI KAMERA. Cek izin browser Anda atau klik tombol "Cek & Mulai Ulang Kamera"';
+                    let readerText = 'GAGAL MEMULAI KAMERA. Cek izin browser Anda.';
                     
-                    if (location.protocol !== 'https:') {
-                         statusText = '❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.';
-                         readerText = 'GAGAL. Akses via HTTPS diperlukan. Silakan coba lagi setelah mengaktifkan HTTPS.';
-                    }
-
                     setStatus(statusText, 'error');
                     setReaderPlaceholder(readerText);
                     html5QrcodeScanner = null;
                 }
             }
-            // Tidak perlu argumen ketiga (cameraConfig) lagi, karena constraints sudah ada di constructor config
         );
     }
     
-    // Fungsi untuk mendaftarkan semua kamera dan memulai scanner
+    // Fungsi untuk memulai scanner tanpa perlu enumerasi kamera yang rumit
     async function setupCameraSelection() {
-        setStatus('Mengecek ketersediaan kamera dan izin...');
+        // Jangan lanjutkan jika bukan HTTPS
+        if (location.protocol !== 'https:') {
+            cameraRestartBtn.disabled = false; 
+            return;
+        }
+        
+        setStatus('Meminta izin kamera dan memulai scanner...');
         cameraRestartBtn.disabled = true;
         
         try {
-            // Periksa HTTPS sebelum mencoba mendapatkan kamera
-            if (location.protocol !== 'https:') {
-                throw new Error('NonSecureContext: Camera access requires HTTPS protocol.');
-            }
+            // Langsung panggil initScanner. Kami mengandalkan browser dan library untuk
+            // memicu permintaan izin dan memilih kamera belakang secara otomatis.
+            initScanner(); 
+            
+            // Biarkan tombol restart tersedia setelah inisialisasi awal
+            cameraRestartBtn.disabled = false; 
 
-            const cameras = await Html5Qrcode.getCameras();
-            
-            cameraSelect.innerHTML = '';
-            
-            if (cameras && cameras.length) {
-                setStatus(`Akses Diberikan. Ditemukan ${cameras.length} kamera.`, 'success');
-                cameraSelect.disabled = false;
-                cameraRestartBtn.disabled = false;
-                
-                let defaultCameraId = null;
-                
-                cameras.forEach(camera => {
-                    const option = document.createElement('option');
-                    option.value = camera.id;
-                    option.text = camera.label || `Kamera ${camera.id}`;
-                    cameraSelect.appendChild(option);
-                    
-                    // Coba tentukan kamera belakang (environment) sebagai default
-                    if (camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('environment')) {
-                        defaultCameraId = camera.id;
-                    }
-                });
-                
-                // Set kamera default yang paling baik (belakang), atau yang pertama
-                const finalCameraId = defaultCameraId || cameras[0].id;
-                cameraSelect.value = finalCameraId;
-                
-                LOG(`Memulai dengan kamera: ${cameraSelect.options[cameraSelect.selectedIndex].text}`);
-                initScanner(finalCameraId);
-            } else {
-                setStatus('❌ Tidak ada kamera yang terdeteksi atau izin ditolak.', 'error');
-                cameraSelect.disabled = true;
-                cameraRestartBtn.disabled = false; // Tetap aktifkan agar user bisa mencoba lagi
-            }
         } catch (err) {
-            LOG("Gagal mendapatkan kamera atau izin ditolak: " + err.toString(), 'e');
-            
-            let errorMessage = '❌ Izin kamera ditolak. Mohon aktifkan di pengaturan browser Anda.';
-            let readerMessage = 'IZIN DITOLAK. Klik "Cek & Mulai Ulang Kamera" atau periksa izin browser Anda.';
-
-            // Periksa jika kegagalan disebabkan oleh konteks non-aman
-            if (err.message.includes('NonSecureContext') || location.protocol !== 'https:') {
-                errorMessage = '❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.';
-                readerMessage = 'GAGAL. Akses via HTTPS diperlukan. Silakan coba lagi setelah mengaktifkan HTTPS.';
-            }
-
-            setStatus(errorMessage, 'error');
-            setReaderPlaceholder(readerMessage);
-            cameraSelect.disabled = true;
-            cameraRestartBtn.disabled = false; // Tetap aktifkan agar user bisa mencoba lagi
+            // Fallback untuk kesalahan tak terduga (ini seharusnya jarang terjadi)
+            LOG("Kesalahan tak terduga saat memulai: " + err.toString(), 'e');
+            setStatus('❌ Error: Coba tekan "Cek & Mulai Ulang Kamera".', 'error');
+            cameraRestartBtn.disabled = false; 
         }
     }
 
@@ -371,7 +325,6 @@
         if(!window.recentScans) window.recentScans = new Map();
         const last = window.recentScans.get(code) || 0;
         
-        // Cek jika scan terjadi dalam DEDUPE_TIME_MS terakhir
         if(now - last < DEDUPE_TIME_MS) return true; 
         
         window.recentScans.set(code, now);
@@ -387,26 +340,18 @@
         }
 
         if (!selectedAction) {
-            // Stop scanner tanpa update status akhir karena akan segera direstart
             stopScanner(true); 
             setStatus('Peringatan: Pilih salah satu aksi terlebih dahulu!', 'warning');
-            setTimeout(() => initScanner(currentCameraId), DEBOUNCE_TIME_MS); 
+            setTimeout(() => initScanner(), DEBOUNCE_TIME_MS); 
             return;
         }
 
-        // Stop scanner dengan update status akhir (default)
         stopScanner();
         setStatus(`QR Diterima: ${decodedText}. Mengirim aksi: ${selectedAction}...`, 'loading');
         sendDataToAppsScript(decodedText, selectedAction);
     }
 
-    // Menangani pemilihan kamera baru
-    cameraSelect.addEventListener('change', (e) => {
-        const newCameraId = e.target.value;
-        LOG(`Pilihan kamera diubah ke: ${e.target.options[e.target.selectedIndex].text}`);
-        setStatus('Mengganti kamera...');
-        initScanner(newCameraId);
-    });
+    // Menangani pemilihan kamera baru (sekarang tidak ada lagi, listener ini dihapus)
     
     // Event listener untuk tombol Cek & Mulai Ulang Kamera
     cameraRestartBtn.addEventListener('click', () => {
@@ -429,8 +374,8 @@
             setStatus(`Aksi '${selectedAction}' terpilih. Siap memindai QR Code.`, 'info');
             
             // Jika scanner terhenti (misal setelah error/scan), aktifkan lagi
-            if (!html5QrcodeScanner) {
-                initScanner(currentCameraId);
+            if (!html5QrcodeScanner && location.protocol === 'https:') {
+                initScanner();
             }
         });
     });
@@ -475,17 +420,24 @@
                 selectedActionEl.classList.add('bg-gray-200', 'text-gray-500');
                 actionButtons.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
                 LOG('Resetting UI dan memulai ulang scanner.');
-                initScanner(currentCameraId); 
+                if (location.protocol === 'https:') {
+                    initScanner(); 
+                } else {
+                    LOG('Tidak memulai ulang scanner karena masih di HTTP.');
+                }
             }, DEBOUNCE_TIME_MS); 
         }
     }
     
-    // Fungsi untuk cek HTTPS
+    // Fungsi untuk cek HTTPS dan mengelola spanduk peringatan
     function checkSecureContext() {
         if (location.protocol !== 'https:') {
+            httpsWarningEl.classList.remove('hidden');
             setStatus('❌ PERINGATAN! Kamera mungkin tidak berfungsi. Akses aplikasi melalui URL HTTPS (aman).', 'error');
             LOG('Aplikasi berjalan di HTTP. Akses kamera akan diblokir oleh browser.', 'e');
+            console.error("AKSES KAMERA DIBLOKIR. Anda harus menggunakan HTTPS untuk mengaktifkan scanner.");
         } else {
+            httpsWarningEl.classList.add('hidden');
             LOG('Koneksi aman (HTTPS). Lanjut inisialisasi.');
         }
     }
@@ -494,8 +446,8 @@
     // **INITIATION:** Mulai proses saat halaman dimuat
     window.onload = function() {
         LOG('Aplikasi dimuat. Memulai inisialisasi.');
-        checkSecureContext(); // Cek HTTPS/Keamanan
-        setupCameraSelection(); // Fungsi ini akan menginisialisasi scanner setelah kamera terdeteksi
+        checkSecureContext(); 
+        setupCameraSelection(); 
     };
 </script>
 
