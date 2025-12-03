@@ -1,22 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SCC QR Scanner</title>
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SCC Camera Test</title>
 </head>
 <body>
-  <h2>QR Scanner</h2>
-  <div id="reader" style="width:100%;max-width:400px;"></div>
-  <script>
-    const qr = new Html5Qrcode("reader");
-    Html5Qrcode.getCameras().then(cams => {
-      if (!cams.length) return alert("No camera found");
-      qr.start(cams[0].id, {fps:10, qrbox:250}, result => {
-        alert("Scanned: " + result);
-      }).catch(e => console.error("Start failed:", e));
-    }).catch(e => console.error("Cameras error:", e));
-  </script>
+
+<h2>SCC Camera Access Test</h2>
+
+<video id="cam" autoplay playsinline style="width:100%;max-width:400px;border:1px solid #ccc"></video>
+
+<script>
+async function startCam() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
+    const video = document.getElementById("cam");
+    video.srcObject = stream;
+
+  } catch (err) {
+    alert("Camera error: " + err);
+    console.log(err);
+  }
+}
+
+startCam();
+</script>
+
 </body>
 </html>
