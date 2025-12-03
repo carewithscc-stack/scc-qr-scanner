@@ -1,82 +1,77 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>SCC QR Scanner</title>
+<head>
+<meta charset="UTF-8">
+<title>SCC QR Scanner</title>
 
-    <!-- Library QR -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+<!-- BETTER CDN -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode"></script>
 
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
+<style>
+  body { font-family: Arial; padding: 20px; }
+  #reader {
+    width: 100%;
+    max-width: 350px;
+    margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+  }
+  button, select {
+    padding: 12px;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+  <h2>SCC QR Scanner</h2>
+
+  <label>Aksi:</label><br>
+  <select id="action">
+    <option value="Picked Up">Picked Up</option>
+    <option value="Delivered">Delivered</option>
+  </select>
+  <br><br>
+
+  <button id="start">Start Camera</button>
+  <button id="stop">Stop Camera</button>
+
+  <div id="reader"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  let scanner = null;
+
+  const startBtn = document.getElementById("start");
+  const stopBtn = document.getElementById("stop");
+
+  startBtn.onclick = () => {
+    if (scanner !== null) return;
+
+    scanner = new Html5Qrcode("reader");
+
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        alert("Scanned: " + decodedText);
       }
-      #reader {
-        width: 100%;
-        max-width: 350px;
-        margin-top: 20px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-      }
-      button, select {
-        padding: 12px;
-        margin-top: 10px;
-        font-size: 16px;
-      }
-    </style>
-  </head>
+    ).catch(err => {
+      alert("Camera error: " + err);
+    });
+  };
 
-  <body>
-    <h2>SCC QR Scanner</h2>
-
-    <label>Aksi:</label><br>
-    <select id="action">
-      <option value="Picked Up">Picked Up</option>
-      <option value="Delivered">Delivered</option>
-    </select>
-
-    <br><br>
-
-    <button id="start">Start Camera</button>
-    <button id="stop">Stop Camera</button>
-
-    <div id="reader"></div>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        let scanner = null;
-
-        const startBtn = document.getElementById("start");
-        const stopBtn = document.getElementById("stop");
-        const action = document.getElementById("action");
-
-        startBtn.onclick = () => {
-          if (scanner !== null) return;
-
-          scanner = new Html5Qrcode("reader");
-
-          scanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-
-            (decodedText) => {
-              alert("Scanned: " + decodedText);
-            },
-
-            (err) => {}
-          );
-        };
-
-        stopBtn.onclick = () => {
-          if (scanner) {
-            scanner.stop().then(() => {
-              scanner.clear();
-              scanner = null;
-            });
-          }
-        };
+  stopBtn.onclick = () => {
+    if (scanner) {
+      scanner.stop().then(() => {
+        scanner.clear();
+        scanner = null;
       });
-    </script>
-  </body>
+    }
+  };
+});
+</script>
+
+</body>
 </html>
