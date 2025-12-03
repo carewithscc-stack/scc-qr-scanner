@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Html5 QR Code (VERSI BROWSER) -->
-  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-
   <title>SCC QR Scanner</title>
+
+  <!-- Html5 QR Code Library -->
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 
   <style>
     body {
@@ -22,11 +21,16 @@
       border: none;
       background: black;
       color: white;
+      cursor: pointer;
     }
     select {
       padding: 10px;
       font-size: 16px;
       border-radius: 8px;
+    }
+    #reader {
+      width: 350px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -34,7 +38,7 @@
 
   <h2>SCC QR Scanner</h2>
 
-  <label>Pilih aksi:</label>
+  <label for="action">Pilih aksi:</label>
   <select id="action">
     <option value="Picked Up">Picked Up</option>
     <option value="Delivered">Delivered</option>
@@ -43,52 +47,78 @@
   <br><br>
 
   <button id="startBtn">Start Camera</button>
-  <button id="stopBtn">Stop</button>
+  <button id="stopBtn">Stop Camera</button>
 
-  <div id="reader" style="width: 350px; margin-top: 20px;"></div>
+  <div id="reader"></div>
 
   <script>
-    console.log("🔧 Script loaded, ready.");
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("🔧 DOM ready. Html5Qrcode type:", typeof Html5Qrcode);
 
-    let scanner = null;
-
-    document.getElementById("startBtn").onclick = function () {
-      console.log("▶ Start button clicked");
-
-      scanner = new Html5Qrcode("reader");
-
-      scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          console.log("QR FOUND:", decodedText);
-
-          // kirim ke server Google Apps Script
-          fetch(
-            "https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec",
-            {
-              method: "POST",
-              body: JSON.stringify({
-                qr: decodedText,
-                action: document.getElementById("action").value,
-              }),
-            }
-          );
-
-          alert("QR: " + decodedText);
-        },
-        (error) => {
-          console.log("scan error:", error);
-        }
-      );
-    };
-
-    document.getElementById("stopBtn").onclick = function () {
-      if (scanner) {
-        scanner.stop();
-        console.log("⏹ Camera stopped");
+      if (typeof Html5Qrcode === "undefined") {
+        alert("Html5Qrcode library belum dimuat! Coba refresh halaman.");
+        return;
       }
-    };
+
+      let scanner = null;
+
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+
+      startBtn.onclick = function () {
+        if (scanner) {
+          console.warn("Scanner sudah berjalan");
+          return;
+        }
+
+        scanner = new Html5Qrcode("reader");
+        console.log("▶ Starting scanner...");
+
+        scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            console.log("✅ QR FOUND:", decodedText);
+
+            // Kirim hasil ke Google Apps Script
+            fetch(
+              "https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  qr: decodedText,
+                  action: document.getElementById("action").value,
+                }),
+              }
+            ).catch(err => console.error("Error sending to server:", err));
+
+            alert("QR Scanned: " + decodedText);
+          },
+          (error) => {
+            console.log("Scan error:", error);
+          }
+        ).catch(err => {
+          console.error("Failed to start scanner:", err);
+          scanner = null;
+        });
+      };
+
+      stopBtn.onclick = function () {
+        if (!scanner) {
+          console.warn("Scanner belum berjalan");
+          return;
+        }
+
+        scanner.stop().then(() => {
+          console.log("⏹ Camera stopped");
+          scanner.clear();
+          scanner = null;
+        }).catch(err => {
+          console.error("Stop error:", err);
+        });
+      };
+    });
   </script>
+
 </body>
 </html>
