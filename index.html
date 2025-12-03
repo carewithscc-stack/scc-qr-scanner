@@ -117,8 +117,7 @@
 const CDNS = ["https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"];
 
 // ***********************************************************************************
-// !!! PENTING: GANTI URL DI BAWAH INI DENGAN URL WEB APP DEPLOYMENT GAS ANDA YANG ASLI !!!
-// Setelah Anda "Deploy Ulang" Apps Script, salin URL Web App yang baru ke sini.
+// URL WEB APP DEPLOYMENT GOOGLE APPS SCRIPT
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5rW4yJLEm2bEv92-hQSEH06sxgA93dhGnhAzRR2cIM0mB6rTN3pBXwGf3hfbSplc1/exec'; 
 // ***********************************************************************************
 
@@ -222,23 +221,23 @@ function onScanSuccess(decodedText) {
     fetch(GAS_URL, {
         method: 'POST',
         headers: {
+            // Kita tetap menyertakan Content-Type, meskipun mungkin diabaikan oleh 'no-cors'
             'Content-Type': 'application/json' 
         },
-        body: payload
+        body: payload,
+        // *** PERBAIKAN FAILED TO FETCH: Menambahkan mode no-cors untuk menghindari blokir CORS ***
+        mode: 'no-cors' 
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'Success') {
-            setStatus(`Sukses: ${data.action} untuk ${data.orderId}`, 'success');
-            LOG(`Respon Server: ${data.result}`);
-        } else {
-            setStatus(`Gagal: ${data.message}`, 'error');
-            LOG(`Error Server: ${data.message}`, 'e');
-        }
+    .then(() => {
+        // Karena mode 'no-cors' membuat respons tidak dapat dibaca (opaque), 
+        // kita berasumsi pengiriman berhasil jika promise fetch terselesaikan.
+        setStatus(`Data berhasil dikirim ke server.`, 'success');
+        LOG('Permintaan fetch selesai tanpa error jaringan (mode no-cors). Harap cek log Apps Script.');
     })
     .catch(error => {
-        setStatus('Gagal terhubung ke server (jaringan)', 'error');
-        LOG('Error jaringan saat mengirim data: ' + error, 'e');
+        // Menambahkan detail error di catch
+        setStatus('Gagal terhubung ke server (jaringan atau CORS)', 'error');
+        LOG('Error jaringan/CORS saat mengirim data: ' + error, 'e');
     });
 }
 
