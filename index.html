@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SCC QR Scanner Ultra-Full</title>
+<title>SCC QR Scanner CDN-Ready</title>
 <style>
 body{font-family:Arial,sans-serif;background:#f0f2f5;display:flex;justify-content:center;padding:20px;}
 .card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:480px;width:100%;}
@@ -13,7 +13,6 @@ h1{text-align:center;margin-bottom:15px;color:#222;}
 select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
 button{padding:10px 18px;border:none;border-radius:10px;background:#111;color:#fff;font-weight:bold;font-size:14px;cursor:pointer;transition:0.2s;}
 button:hover{background:#333;}
-button:disabled{opacity:0.5;cursor:not-allowed;}
 #reader{width:100%;height:260px;border-radius:12px;border:2px solid #444;box-shadow:0 4px 15px rgba(0,0,0,0.2);overflow:hidden;background:#000;margin-bottom:12px;transition:background 0.2s;}
 .status{font-size:14px;margin-bottom:8px;padding:6px 10px;border-radius:8px;}
 .status.loading{background:#fff8c6;color:#9a6f00;}
@@ -29,10 +28,13 @@ table th, table td{padding:6px 8px;border:1px solid #ccc;text-align:left;font-si
 .status-color-Delivered{background:#32cd32;}
 .status-color-Completed{background:#9370db;}
 </style>
+
+<!-- Html5 QR Code CDN -->
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="card">
-<h1>SCC QR Scanner Ultra-Full</h1>
+<h1>SCC QR Scanner CDN</h1>
 
 <div class="controls">
 <label>Aksi:<br>
@@ -74,17 +76,12 @@ table th, table td{padding:6px 8px;border:1px solid #ccc;text-align:left;font-si
 </table>
 </div>
 
-<!-- ======= Full Embedded Html5Qrcode library ======= -->
-<script>
-// Bos Alva: paste html5-qrcode.min.js di sini (versi 2.3.7) untuk full offline
-</script>
-
 <script>
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-function initUltraFullScanner(){
-const QUEUE_KEY='scc_qr_queue_full';
+function initCDNScanner(){
+const QUEUE_KEY='scc_qr_queue_cdn';
 let scanner=null,isScanning=false,recentScans=new Map(),DEDUPE_MS=5000;
 const tableBody=document.querySelector('#scanTable tbody');
 
@@ -167,7 +164,10 @@ document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScan
 checkPermission();
 }
 
-initUltraFullScanner();
+window.addEventListener('DOMContentLoaded', ()=>{
+if(!window.Html5Qrcode){console.error("Library CDN belum terload!"); return;}
+initCDNScanner();
+});
 </script>
 </body>
 </html>
