@@ -212,13 +212,18 @@
     /* --- LOGIKA SCANNER --- */
 
     // Menghentikan dan membersihkan scanner
-    function stopScanner() {
+    // Menambahkan flag isRestarting untuk mencegah update status yang tidak perlu
+    function stopScanner(isRestarting = false) {
         if (html5QrcodeScanner) {
             setStatus('Menghentikan scanner...');
             html5QrcodeScanner.clear().then(() => {
                 html5QrcodeScanner = null; 
-                setStatus('Scanner dihentikan.', 'info');
-                setReaderPlaceholder('Scanner dihentikan. Silakan pilih aksi dan mulai lagi.');
+                if (!isRestarting) { // Hanya update status jika BUKAN untuk restart/init
+                    setStatus('Scanner dihentikan.', 'info');
+                    setReaderPlaceholder('Scanner dihentikan. Silakan pilih aksi dan mulai lagi.');
+                } else {
+                    LOG('Scanner lama dibersihkan. Lanjut memulai scanner baru.');
+                }
             }).catch(error => {
                 LOG("Gagal menghentikan scanner: " + error, 'e');
                 html5QrcodeScanner = null;
@@ -226,13 +231,17 @@
                 setReaderPlaceholder('Gagal menghentikan scanner. Coba tekan "Cek & Mulai Ulang Kamera".');
             });
         } else {
-             setReaderPlaceholder('Scanner tidak aktif. Silakan mulai dengan tombol "Cek & Mulai Ulang Kamera".');
+             // Hanya tampilkan placeholder jika bukan bagian dari proses restart
+             if (!isRestarting) {
+                 setReaderPlaceholder('Scanner tidak aktif. Silakan mulai dengan tombol "Cek & Mulai Ulang Kamera".');
+             }
         }
     }
     
     // Inisialisasi Scanner dengan Camera ID tertentu
     function initScanner(cameraId) {
-        stopScanner(); // Pastikan scanner lama dihentikan
+        // Panggil dengan true untuk menekan pesan "Scanner dihentikan"
+        stopScanner(true); 
         
         currentCameraId = cameraId;
         
@@ -250,6 +259,7 @@
             /* verbose= */ false
         );
 
+        // Status "Memulai kamera..." akan menimpa status "Menghentikan scanner..."
         setStatus('Memulai kamera...');
         
         html5QrcodeScanner.render(
@@ -339,12 +349,14 @@
         }
 
         if (!selectedAction) {
-            stopScanner();
+            // Stop scanner tanpa update status akhir karena akan segera direstart
+            stopScanner(true); 
             setStatus('Peringatan: Pilih salah satu aksi terlebih dahulu!', 'warning');
             setTimeout(() => initScanner(currentCameraId), DEBOUNCE_TIME_MS); 
             return;
         }
 
+        // Stop scanner dengan update status akhir (default)
         stopScanner();
         setStatus(`QR Diterima: ${decodedText}. Mengirim aksi: ${selectedAction}...`, 'loading');
         sendDataToAppsScript(decodedText, selectedAction);
