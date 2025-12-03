@@ -1,166 +1,128 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SCC QR Scanner — SCC Flow</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SCC QR Scanner Ultimate</title>
 <style>
-  /* Reset & font */
-  *{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
-  body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
-  
-  /* Container card */
-  .scanner-card{
-    background:#fff;
-    border-radius:15px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.15);
-    padding:20px;
-    max-width:420px;
-    width:100%;
-  }
-
-  h1{font-size:22px;margin-bottom:12px;text-align:center;color:#222;}
-
-  /* Controls */
-  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
-  .controls label{font-size:14px;color:#555;}
-  select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
-  button{
-    padding:10px 18px;border:none;border-radius:10px;
-    background:#111;color:#fff;font-weight:bold;font-size:14px;
-    cursor:pointer;transition:0.2s;
-  }
-  button:hover{background:#333;}
-  button:disabled{opacity:0.5;cursor:not-allowed;}
-
-  /* Camera feed */
-  #reader{
-    width:100%;height:260px;
-    border-radius:12px;
-    border:2px solid #444;
-    box-shadow:0 4px 15px rgba(0,0,0,0.2);
-    overflow:hidden;
-    background:#000;
-    margin-bottom:12px;
-  }
-
-  /* Status */
-  .status{
-    font-size:14px;
-    margin-bottom:8px;
-    padding:6px 10px;
-    border-radius:8px;
-  }
-  .status.loading{background:#fff8c6;color:#9a6f00;}
-  .status.success{background:#d4edda;color:#155724;}
-  .status.error{background:#f8d7da;color:#721c24;}
-
-  /* Pending & last send */
-  .small{font-size:12px;color:#555;margin-bottom:6px;display:flex;justify-content:space-between;}
-
-  /* Log */
-  .log{
-    background:#f7f7f7;
-    padding:10px;
-    border-radius:10px;
-    font-family:monospace;
-    font-size:12px;
-    max-height:160px;
-    overflow-y:auto;
-    border:1px solid #eee;
-  }
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
+body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
+.scanner-card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:420px;width:100%;}
+h1{font-size:22px;margin-bottom:12px;text-align:center;color:#222;}
+.controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
+.controls label{font-size:14px;color:#555;}
+select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
+button{padding:10px 18px;border:none;border-radius:10px;background:#111;color:#fff;font-weight:bold;font-size:14px;cursor:pointer;transition:0.2s;}
+button:hover{background:#333;}
+button:disabled{opacity:0.5;cursor:not-allowed;}
+#reader{width:100%;height:260px;border-radius:12px;border:2px solid #444;box-shadow:0 4px 15px rgba(0,0,0,0.2);overflow:hidden;background:#000;margin-bottom:12px;transition:background 0.2s;}
+.status{font-size:14px;margin-bottom:8px;padding:6px 10px;border-radius:8px;}
+.status.loading{background:#fff8c6;color:#9a6f00;}
+.status.success{background:#d4edda;color:#155724;}
+.status.error{background:#f8d7da;color:#721c24;}
+.small{font-size:12px;color:#555;margin-bottom:6px;display:flex;justify-content:space-between;}
+.log{background:#f7f7f7;padding:10px;border-radius:10px;font-family:monospace;font-size:12px;max-height:160px;overflow-y:auto;border:1px solid #eee;}
 </style>
 </head>
 <body>
 
 <div class="scanner-card">
-  <h1>SCC QR Scanner — SCC Flow</h1>
+<h1>SCC QR Scanner Ultimate</h1>
 
-  <div class="controls">
-    <label>Aksi:<br>
-      <select id="action">
-        <option value="Order Received">Order Received</option>
-        <option value="Processing">Processing</option>
-        <option value="Picked Up">Picked Up</option>
-        <option value="In Transit">In Transit</option>
-        <option value="Delivered">Delivered</option>
-        <option value="Completed">Completed</option>
-      </select>
-    </label>
+<div class="controls">
+<label>Aksi:<br>
+<select id="action">
+  <option value="Order Received">Order Received</option>
+  <option value="Processing">Processing</option>
+  <option value="Picked Up">Picked Up</option>
+  <option value="In Transit">In Transit</option>
+  <option value="Delivered">Delivered</option>
+  <option value="Completed">Completed</option>
+</select>
+</label>
 
-    <label>Kamera:<br>
-      <select id="cameraSelect"><option>-- memuat --</option></select>
-    </label>
+<label>Kamera:<br>
+<select id="cameraSelect"><option>-- memuat --</option></select>
+</label>
 
-    <button id="permBtn">Check Camera</button>
-    <button id="startBtn" disabled>Start</button>
-    <button id="stopBtn" disabled>Stop</button>
-    <button id="loadLocalBtn">Load local JS</button>
-  </div>
+<button id="permBtn">Check Camera</button>
+</div>
 
-  <div id="reader"></div>
+<div id="reader"></div>
 
-  <div id="statusLine" class="status loading">Menunggu library...</div>
-  <div class="small">
-    <span>Pending: <span id="pendingCount">0</span></span>
-    <span>Last Send: <span id="lastSend">-</span></span>
-  </div>
+<div id="statusLine" class="status loading">Menunggu library...</div>
+<div class="small">
+  <span>Pending: <span id="pendingCount">0</span></span>
+  <span>Last Send: <span id="lastSend">-</span></span>
+</div>
 
-  <label class="small">Server endpoint:</label>
-  <input id="endpoint" value="https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec">
+<label class="small">Server endpoint:</label>
+<input id="endpoint" value="https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec">
 
-  <div class="log" id="logArea"></div>
+<div class="log" id="logArea"></div>
 </div>
 
 <script>
-/* SCC QR Scanner — SCC Flow */
+// --- Utility ---
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-const CDNS=[
-  "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js",
-  "https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"
-];
+// --- Load Html5Qrcode ---
+(async function(){
+  setStatus('Loading Html5Qrcode library...','loading');
+  try{
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
+    });
+    setStatus('Library loaded','success');
+    initScanner();
+  }catch(e){
+    setStatus('Library load failed','error');LOG('Library failed: '+e,'e');
+  }
+})();
 
-function loadScriptWithTimeout(src,timeoutMs=10000){return new Promise((resolve,reject)=>{const s=document.createElement('script');let done=false;const timer=setTimeout(()=>{if(done)return;done=true;s.onerror=s.onload=null;s.remove();reject(new Error('timeout'));},timeoutMs);s.onload=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};s.onerror=(e)=>{if(done)return;done=true;clearTimeout(timer);s.remove();reject(e||new Error('load error'));};s.src=src;document.head.appendChild(s);});}
-
-async function tryLoadCdns(){for(const url of CDNS){try{setStatus('Loading library...');LOG('Trying CDN: '+url);await loadScriptWithTimeout(url,10000);await new Promise(r=>setTimeout(r,200));if(typeof window.Html5Qrcode!=='undefined'){LOG('Html5Qrcode loaded from '+url);setStatus('Library loaded (CDN)','success');return true;}else{LOG('Script loaded but Html5Qrcode undefined, fallback...','e');}}catch(err){LOG('Failed CDN: '+err.message||err,'e');}}return false;}
-
-function attachLocalFileLoader(){document.getElementById('loadLocalBtn').addEventListener('click',()=>{const input=document.createElement('input');input.type='file';input.accept='.js';input.onchange=async(ev)=>{const f=ev.target.files[0];if(!f)return;setStatus('Loading local library...');const blobUrl=URL.createObjectURL(f);try{await loadScriptWithTimeout(blobUrl,10000);await new Promise(r=>setTimeout(r,200));if(typeof window.Html5Qrcode!=='undefined'){setStatus('Library loaded (local)','success');LOG('Html5Qrcode loaded from local');initAfterLib();}else{setStatus('Local file loaded but Html5Qrcode undefined','error');LOG('Local file loaded but Html5Qrcode undefined','e');}}catch(err){LOG('Failed load local: '+err.message||err,'e');setStatus('Failed loading local','error');}};input.click();});}
-
+// --- Scanner logic ---
+function initScanner(){
 const QUEUE_KEY='scc_qr_queue_v1';
+let scanner=null,isScanning=false;
+const recentScans=new Map(),DEDUPE_WINDOW_MS=5000;
+function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
 function loadQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch(e){return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));document.getElementById('pendingCount').textContent=q.length;}
 function pushQueue(item){const q=loadQueue();q.push(item);saveQueue(q);}
 function shiftQueue(){const q=loadQueue();if(q.length===0)return null;const it=q.shift();saveQueue(q);return it;}
-
-let retryTimer=null;let retryDelayBase=2000;
-async function trySendNext(){const q=loadQueue();if(q.length===0){document.getElementById('pendingCount').textContent=0;return;}document.getElementById('pendingCount').textContent=q.length;const item=q[0];try{setStatus('Sending to server...','loading');LOG('Sending: '+JSON.stringify(item));const res=await fetch(document.getElementById('endpoint').value,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item),keepalive:true});if(res.ok){LOG('Server OK, removing from queue');item._sentAt=(new Date()).toISOString();shiftQueue();document.getElementById('lastSend').textContent=new Date().toLocaleString();retryDelayBase=2000;setTimeout(trySendNext,200);}else{LOG('Server non-OK: '+res.status,'e');scheduleRetry();}}catch(err){LOG('Failed send: '+(err.message||err),'e');scheduleRetry();}}
-
-function scheduleRetry(){if(retryTimer)return;const delay=Math.min(retryDelayBase,60000);LOG('Retry in '+delay/1000+'s');retryTimer=setTimeout(()=>{retryTimer=null;retryDelayBase=Math.min(retryDelayBase*1.8,60000);trySendNext();},delay);}
+async function trySendNext(){const q=loadQueue();if(q.length===0){document.getElementById('pendingCount').textContent=0;return;}const item=q[0];try{setStatus('Sending...','loading');LOG('Sending: '+JSON.stringify(item));const res=await fetch(document.getElementById('endpoint').value,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item),keepalive:true});if(res.ok){LOG('Sent OK');shiftQueue();document.getElementById('lastSend').textContent=new Date().toLocaleString();setTimeout(trySendNext,200);}else{LOG('Server error: '+res.status,'e');setTimeout(trySendNext,3000);}}catch(err){LOG('Send failed: '+(err.message||err),'e');setTimeout(trySendNext,3000);}}
 setInterval(()=>{trySendNext();},15000);
 
-let scanner=null;let isScanning=false;const recentScans=new Map();const DEDUPE_WINDOW_MS=5000;
-function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
-async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try{scanner.clear();}catch(e){}scanner=null;isScanning=false;}}
+function onScanSuccess(decodedText){if(dedupeCheck(decodedText)){LOG('Duplicate ignored: '+decodedText);return;}
+LOG('QR detected: '+decodedText);pushQueue({qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()});trySendNext();
+// --- beep & highlight ---
+const beep=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='); beep.play();
+const reader=document.getElementById('reader'); reader.style.background='#0f0'; setTimeout(()=>{reader.style.background='#000';},200);
+}
 
-function onScanSuccess(decodedText,decodedResult){if(dedupeCheck(decodedText)){LOG('Duplicate scan ignored: '+decodedText);return;}LOG('QR detected: '+decodedText);const payload={qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()};pushQueue(payload);document.getElementById('pendingCount').textContent=loadQueue().length;trySendNext();if(scanner && typeof scanner.pause==='function'){try{scanner.pause(true);setTimeout(()=>{try{scanner.resume();}catch(e){}},900);}catch(e){}}}
 function onScanFailure(err){}
 
-async function stopScanner(){if(!isScanning||!scanner){LOG('Stop requested but scanner not running');return;}try{await scanner.stop();}catch(e){LOG('Stop error: '+(e.message||e),'e');}try{scanner.clear();}catch(e){}scanner=null;isScanning=false;document.getElementById('startBtn').disabled=false;document.getElementById('stopBtn').disabled=true;setStatus('Scanner stopped','loading');LOG('Scanner stopped');}
+async function startScanner(deviceId=null){
+if(!window.Html5Qrcode||isScanning)return;
+scanner=new Html5Qrcode("reader",{verbose:false});
+const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};
+await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);
+isScanning=true;LOG('Scanner running');setStatus('Scanner running','success');
+}
 
-async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';try{if(window.Html5Qrcode && typeof Html5Qrcode.getCameras==='function'){const cams=await Html5Qrcode.getCameras();if(cams && cams.length){select.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});return;}}const devices=await navigator.mediaDevices.enumerateDevices();const videoInputs=devices.filter(d=>d.kind==='videoinput');if(videoInputs.length){select.innerHTML='';videoInputs.forEach((d,i)=>{const opt=document.createElement('option');opt.value=d.deviceId;opt.textContent=d.label||`Camera ${i+1}`;select.appendChild(opt);});}else{select.innerHTML='<option value="">(no camera found)</option>';}}catch(err){LOG('Failed enum devices: '+(err.message||err),'e');select.innerHTML='<option value="">(camera error)</option>';}}
-async function checkPermission(){try{setStatus('Checking camera permission...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera permission granted','success');await listCameras();document.getElementById('startBtn').disabled=false;}catch(err){LOG('Camera permission denied: '+(err.message||err),'e');setStatus('Camera permission denied','error');document.getElementById('startBtn').disabled=true;try{await listCameras();}catch(e){}}}
+async function stopScanner(){if(!scanner||!isScanning)return;try{await scanner.stop();scanner.clear();}catch(e){LOG('Stop error: '+e,'e');}scanner=null;isScanning=false;setStatus('Scanner stopped','loading');}
+
+async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';try{const cams=await Html5Qrcode.getCameras();select.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});}catch(e){LOG('Camera enum failed: '+e,'e');select.innerHTML='<option>(camera error)</option>';}}
+async function checkPermission(){try{setStatus('Checking camera...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera ready','success');await listCameras();const cam=document.getElementById('cameraSelect').value||null;startScanner(cam);}catch(e){LOG('Camera denied: '+e,'e');setStatus('Camera permission denied','error');}}
 
 document.getElementById('permBtn').addEventListener('click',()=>checkPermission());
-document.getElementById('startBtn').addEventListener('click',()=>{const camId=document.getElementById('cameraSelect').value||null;startScanner(camId);});
-document.getElementById('stopBtn').addEventListener('click',()=>stopScanner());
-document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){LOG('Switch camera requested');stopScanner().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
-attachLocalFileLoader();
-
-async function init(){setStatus('Loading library from CDN...','loading');const ok=await tryLoadCdns();if(ok){initAfterLib();}else{setStatus('Failed CDN — use local file','error');LOG('All CDN failed');document.getElementById('loadLocalBtn').disabled=false;}}
-function initAfterLib(){setStatus('Ready — library loaded','success');document.getElementById('loadLocalBtn').disabled=false;listCameras().catch(e=>LOG('listCameras error: '+e,'e'));document.getElementById('pendingCount').textContent=loadQueue().length;trySendNext();}
-init();
+document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){stopScanner().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
+checkPermission();
+}
 </script>
 
 </body>
