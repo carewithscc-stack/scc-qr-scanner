@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>SCC QR Scanner</title>
 
-    <!-- Load JS library -->
+    <!-- Library QR -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 
     <style>
@@ -16,11 +16,13 @@
         width: 100%;
         max-width: 350px;
         margin-top: 20px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
       }
-      select, button {
-        padding: 10px;
-        font-size: 16px;
+      button, select {
+        padding: 12px;
         margin-top: 10px;
+        font-size: 16px;
       }
     </style>
   </head>
@@ -28,7 +30,7 @@
   <body>
     <h2>SCC QR Scanner</h2>
 
-    <label for="action">Pilih aksi:</label><br>
+    <label>Aksi:</label><br>
     <select id="action">
       <option value="Picked Up">Picked Up</option>
       <option value="Delivered">Delivered</option>
@@ -47,41 +49,33 @@
 
         const startBtn = document.getElementById("start");
         const stopBtn = document.getElementById("stop");
-        const actionSelect = document.getElementById("action");
+        const action = document.getElementById("action");
 
-        startBtn.addEventListener("click", () => {
+        startBtn.onclick = () => {
           if (scanner !== null) return;
 
           scanner = new Html5Qrcode("reader");
 
           scanner.start(
             { facingMode: "environment" },
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 }
-            },
+            { fps: 10, qrbox: 250 },
+
             (decodedText) => {
-              console.log("Scanned:", decodedText);
-
-              // Call Apps Script API (optional)
-              if (google?.script?.run) {
-                google.script.run.handleScan(decodedText, actionSelect.value);
-              }
-
-              alert("Scanned:\n" + decodedText);
+              alert("Scanned: " + decodedText);
             },
+
             (err) => {}
           );
-        });
+        };
 
-        stopBtn.addEventListener("click", () => {
+        stopBtn.onclick = () => {
           if (scanner) {
             scanner.stop().then(() => {
               scanner.clear();
               scanner = null;
             });
           }
-        });
+        };
       });
     </script>
   </body>
