@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCC QR Scanner Ultimate Embedded</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCC QR Scanner Ultra-Full</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
-body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
-.scanner-card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:420px;width:100%;}
-h1{font-size:22px;margin-bottom:12px;text-align:center;color:#222;}
+body{font-family:Arial,sans-serif;background:#f0f2f5;display:flex;justify-content:center;padding:20px;}
+.card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:480px;width:100%;}
+h1{text-align:center;margin-bottom:15px;color:#222;}
 .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
 .controls label{font-size:14px;color:#555;}
 select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
@@ -20,24 +19,30 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 .status.loading{background:#fff8c6;color:#9a6f00;}
 .status.success{background:#d4edda;color:#155724;}
 .status.error{background:#f8d7da;color:#721c24;}
-.small{font-size:12px;color:#555;margin-bottom:6px;display:flex;justify-content:space-between;}
-.log{background:#f7f7f7;padding:10px;border-radius:10px;font-family:monospace;font-size:12px;max-height:160px;overflow-y:auto;border:1px solid #eee;}
+.log{background:#f7f7f7;padding:10px;border-radius:10px;font-family:monospace;font-size:12px;max-height:200px;overflow-y:auto;border:1px solid #eee;margin-bottom:10px;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+table th, table td{padding:6px 8px;border:1px solid #ccc;text-align:left;font-size:12px;}
+.status-color-Order\ Received{background:#ccc;}
+.status-color-Processing{background:#87ceeb;}
+.status-color-Picked\ Up{background:#ffd700;}
+.status-color-In\ Transit{background:#ff8c00;}
+.status-color-Delivered{background:#32cd32;}
+.status-color-Completed{background:#9370db;}
 </style>
 </head>
 <body>
-
-<div class="scanner-card">
-<h1>SCC QR Scanner Ultimate Embedded</h1>
+<div class="card">
+<h1>SCC QR Scanner Ultra-Full</h1>
 
 <div class="controls">
 <label>Aksi:<br>
 <select id="action">
-  <option value="Order Received">Order Received</option>
-  <option value="Processing">Processing</option>
-  <option value="Picked Up">Picked Up</option>
-  <option value="In Transit">In Transit</option>
-  <option value="Delivered">Delivered</option>
-  <option value="Completed">Completed</option>
+<option value="Order Received">Order Received</option>
+<option value="Processing">Processing</option>
+<option value="Picked Up">Picked Up</option>
+<option value="In Transit">In Transit</option>
+<option value="Delivered">Delivered</option>
+<option value="Completed">Completed</option>
 </select>
 </label>
 
@@ -49,71 +54,120 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 </div>
 
 <div id="reader"></div>
-
 <div id="statusLine" class="status loading">Menunggu scanner...</div>
+
 <div class="small">
-  <span>Pending: <span id="pendingCount">0</span></span>
-  <span>Last Send: <span id="lastSend">-</span></span>
+<span>Pending: <span id="pendingCount">0</span></span>
+<span>Last Send: <span id="lastSend">-</span></span>
 </div>
 
 <label class="small">Server endpoint:</label>
 <input id="endpoint" value="https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec">
 
 <div class="log" id="logArea"></div>
+
+<table id="scanTable">
+<thead>
+<tr><th>QR Code</th><th>Status</th><th>Time</th></tr>
+</thead>
+<tbody></tbody>
+</table>
 </div>
 
-<!-- ======= Fully Embedded Html5Qrcode library ======= -->
+<!-- ======= Full Embedded Html5Qrcode library ======= -->
 <script>
-// Isi lengkap html5-qrcode.min.js versi 2.3.7 disini
-// Untuk alasan ukuran, biasanya panjang > 200KB
-// Bos Alva bisa download dari github: https://github.com/mebjas/html5-qrcode
-// Lalu paste semua konten JS di sini, sebelum script utama
+// Bos Alva: paste html5-qrcode.min.js di sini (versi 2.3.7) untuk full offline
 </script>
 
-<!-- ======= Scanner Script ======= -->
 <script>
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-function initScanner(){
-const QUEUE_KEY='scc_qr_queue_v1';
-let scanner=null,isScanning=false;
-const recentScans=new Map(),DEDUPE_WINDOW_MS=5000;
-function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
+function initUltraFullScanner(){
+const QUEUE_KEY='scc_qr_queue_full';
+let scanner=null,isScanning=false,recentScans=new Map(),DEDUPE_MS=5000;
+const tableBody=document.querySelector('#scanTable tbody');
+
+function dedupe(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
 function loadQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch(e){return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));document.getElementById('pendingCount').textContent=q.length;}
-function pushQueue(item){const q=loadQueue();q.push(item);saveQueue(q);}
+function pushQueue(it){const q=loadQueue();q.push(it);saveQueue(q);}
 function shiftQueue(){const q=loadQueue();if(q.length===0)return null;const it=q.shift();saveQueue(q);return it;}
-async function trySendNext(){const q=loadQueue();if(q.length===0){document.getElementById('pendingCount').textContent=0;return;}const item=q[0];try{setStatus('Sending...','loading');LOG('Sending: '+JSON.stringify(item));const res=await fetch(document.getElementById('endpoint').value,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item),keepalive:true});if(res.ok){LOG('Sent OK');shiftQueue();document.getElementById('lastSend').textContent=new Date().toLocaleString();setTimeout(trySendNext,200);}else{LOG('Server error: '+res.status,'e');setTimeout(trySendNext,3000);}}catch(err){LOG('Send failed: '+(err.message||err),'e');setTimeout(trySendNext,3000);}}
-setInterval(()=>{trySendNext();},15000);
 
-function onScanSuccess(decodedText){if(dedupeCheck(decodedText)){LOG('Duplicate ignored: '+decodedText);return;}
-LOG('QR detected: '+decodedText);pushQueue({qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()});trySendNext();
-// beep & highlight
-const beep=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='); beep.play();
-const reader=document.getElementById('reader'); reader.style.background='#0f0'; setTimeout(()=>{reader.style.background='#000';},200);
+async function trySendNext(){
+const q=loadQueue();
+if(q.length===0){document.getElementById('pendingCount').textContent=0;return;}
+const it=q[0];
+try{
+setStatus('Sending...','loading');LOG('Sending: '+JSON.stringify(it));
+const res=await fetch(document.getElementById('endpoint').value,{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify(it),keepalive:true
+});
+if(res.ok){
+LOG('Sent OK');
+shiftQueue();
+document.getElementById('lastSend').textContent=new Date().toLocaleString();
+setTimeout(trySendNext,200);
+}else{LOG('Server error: '+res.status,'e');setTimeout(trySendNext,3000);}
+}catch(err){LOG('Send failed: '+err,'e');setTimeout(trySendNext,3000);}
+}
+setInterval(trySendNext,15000);
+
+function addTableRow(qr,status){
+const tr=document.createElement('tr');
+tr.className='status-color-'+status.replace(' ','\\ ');
+tr.innerHTML=`<td>${qr}</td><td>${status}</td><td>${new Date().toLocaleTimeString()}</td>`;
+tableBody.prepend(tr);
 }
 
+function onScanSuccess(decoded){
+if(dedupe(decoded)){LOG('Duplicate ignored: '+decoded);return;}
+LOG('QR detected: '+decoded);
+const action=document.getElementById('action').value;
+pushQueue({qr:decoded,action,user:'Bos Alva',ts:(new Date()).toISOString()});
+trySendNext();
+addTableRow(decoded,action);
+// beep + highlight
+const beep=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+beep.play();
+const reader=document.getElementById('reader'); reader.style.background='#0f0'; setTimeout(()=>{reader.style.background='#000';},200);
+}
 function onScanFailure(err){}
 
-async function startScanner(deviceId=null){
+async function startScanner(deviceId=null,retries=3){
 if(!window.Html5Qrcode||isScanning)return;
 scanner=new Html5Qrcode("reader",{verbose:false});
 const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};
-await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);
-isScanning=true;LOG('Scanner running');setStatus('Scanner running','success');
+try{await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);
+isScanning=true;setStatus('Scanner running','success');LOG('Scanner started');}
+catch(e){LOG('Camera start failed: '+e,'e');if(retries>0){LOG('Retry start scanner...');setTimeout(()=>startScanner(deviceId,retries-1),1000);}}}
+
+async function listCameras(){
+const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';
+try{
+const cams=await Html5Qrcode.getCameras();select.innerHTML='';
+cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});
+if(cams[0])startScanner(cams[0].id);
+}catch(e){LOG('Camera enum failed: '+e,'e');select.innerHTML='<option>(camera error)</option>';}
 }
 
-async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';try{const cams=await Html5Qrcode.getCameras();select.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});}catch(e){LOG('Camera enum failed: '+e,'e');select.innerHTML='<option>(camera error)</option>';}}
-async function checkPermission(){try{setStatus('Checking camera...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera ready','success');await listCameras();const cam=document.getElementById('cameraSelect').value||null;startScanner(cam);}catch(e){LOG('Camera denied: '+e,'e');setStatus('Camera permission denied','error');}}
+async function checkPermission(){
+try{
+setStatus('Checking camera...','loading');
+await navigator.mediaDevices.getUserMedia({video:true});
+setStatus('Camera ready','success');
+await listCameras();
+}catch(e){LOG('Camera denied: '+e,'e');setStatus('Camera permission denied','error');}
+}
 
-document.getElementById('permBtn').addEventListener('click',()=>checkPermission());
+document.getElementById('permBtn').addEventListener('click',checkPermission);
 document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){scanner.stop().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
 checkPermission();
 }
 
-initScanner();
+initUltraFullScanner();
 </script>
-
 </body>
 </html>
