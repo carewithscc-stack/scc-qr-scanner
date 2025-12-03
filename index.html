@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCC QR Scanner Ultimate</title>
+<title>SCC QR Scanner Ultimate Embedded</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
 body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
@@ -27,7 +27,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 <body>
 
 <div class="scanner-card">
-<h1>SCC QR Scanner Ultimate</h1>
+<h1>SCC QR Scanner Ultimate Embedded</h1>
 
 <div class="controls">
 <label>Aksi:<br>
@@ -50,7 +50,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 
 <div id="reader"></div>
 
-<div id="statusLine" class="status loading">Menunggu library...</div>
+<div id="statusLine" class="status loading">Menunggu scanner...</div>
 <div class="small">
   <span>Pending: <span id="pendingCount">0</span></span>
   <span>Last Send: <span id="lastSend">-</span></span>
@@ -62,29 +62,19 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 <div class="log" id="logArea"></div>
 </div>
 
+<!-- ======= Fully Embedded Html5Qrcode library ======= -->
 <script>
-// --- Utility ---
+// Isi lengkap html5-qrcode.min.js versi 2.3.7 disini
+// Untuk alasan ukuran, biasanya panjang > 200KB
+// Bos Alva bisa download dari github: https://github.com/mebjas/html5-qrcode
+// Lalu paste semua konten JS di sini, sebelum script utama
+</script>
+
+<!-- ======= Scanner Script ======= -->
+<script>
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-// --- Load Html5Qrcode ---
-(async function(){
-  setStatus('Loading Html5Qrcode library...','loading');
-  try{
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js';
-      s.onload=res; s.onerror=rej;
-      document.head.appendChild(s);
-    });
-    setStatus('Library loaded','success');
-    initScanner();
-  }catch(e){
-    setStatus('Library load failed','error');LOG('Library failed: '+e,'e');
-  }
-})();
-
-// --- Scanner logic ---
 function initScanner(){
 const QUEUE_KEY='scc_qr_queue_v1';
 let scanner=null,isScanning=false;
@@ -99,7 +89,7 @@ setInterval(()=>{trySendNext();},15000);
 
 function onScanSuccess(decodedText){if(dedupeCheck(decodedText)){LOG('Duplicate ignored: '+decodedText);return;}
 LOG('QR detected: '+decodedText);pushQueue({qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()});trySendNext();
-// --- beep & highlight ---
+// beep & highlight
 const beep=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='); beep.play();
 const reader=document.getElementById('reader'); reader.style.background='#0f0'; setTimeout(()=>{reader.style.background='#000';},200);
 }
@@ -114,15 +104,15 @@ await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onSc
 isScanning=true;LOG('Scanner running');setStatus('Scanner running','success');
 }
 
-async function stopScanner(){if(!scanner||!isScanning)return;try{await scanner.stop();scanner.clear();}catch(e){LOG('Stop error: '+e,'e');}scanner=null;isScanning=false;setStatus('Scanner stopped','loading');}
-
 async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';try{const cams=await Html5Qrcode.getCameras();select.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});}catch(e){LOG('Camera enum failed: '+e,'e');select.innerHTML='<option>(camera error)</option>';}}
 async function checkPermission(){try{setStatus('Checking camera...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera ready','success');await listCameras();const cam=document.getElementById('cameraSelect').value||null;startScanner(cam);}catch(e){LOG('Camera denied: '+e,'e');setStatus('Camera permission denied','error');}}
 
 document.getElementById('permBtn').addEventListener('click',()=>checkPermission());
-document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){stopScanner().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
+document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){scanner.stop().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
 checkPermission();
 }
+
+initScanner();
 </script>
 
 </body>
