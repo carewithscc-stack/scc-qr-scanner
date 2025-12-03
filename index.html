@@ -1,398 +1,205 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SCC QR Scanner - Versi Optimal</title>
-<!-- Menggunakan CDN Tailwind untuk kelas utilitas dan estetika modern -->
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  /* Menetapkan font default */
-  :root { font-family: 'Inter', sans-serif; }
-  /* Gaya dasar untuk latar belakang dan centering */
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start; 
-    min-height: 100vh;
-    background-color: #f0f4f8;
-    padding: 1rem;
-  }
-  /* Gaya Card utama - responsif */
-  .card {
-    background: #ffffff;
-    border-radius: 1.5rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 480px;
-  }
-  h1 { color: #1e293b; font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 1rem; }
-  .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-bottom: 1rem; }
-  /* Gaya elemen kontrol */
-  select, input, button {
-    font-size: 0.875rem;
-    padding: 0.6rem 1rem;
-    border-radius: 0.75rem;
-    transition: all 0.2s;
-    border: 1px solid #cbd5e1;
-  }
-  button {
-    cursor: pointer;
-    border: none;
-    background-color: #3b82f6; /* Warna primer biru */
-    color: #fff;
-    font-weight: 600;
-  }
-  button:hover:not(:disabled) { background-color: #2563eb; transform: translateY(-1px); }
-  button:disabled { background-color: #9ca3af; cursor: not-allowed; }
-  label { font-size: 0.875rem; font-weight: 500; color: #475569; }
-  /* Area Pemindai */
-  #reader {
-    width: 100%;
-    height: 300px;
-    background: #000;
-    border-radius: 1rem;
-    overflow: hidden;
-    border: 4px solid #3b82f6;
-    margin-bottom: 1rem;
-  }
-  /* Gaya Status */
-  .status {
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    margin-bottom: 0.75rem;
-    font-weight: 600;
-  }
-  .status.loading { background-color: #fef3c7; color: #a16207; border: 1px solid #fcd34d; }
-  .status.success { background-color: #dcfce7; color: #059669; border: 1px solid #34d399; }
-  .status.error { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
-  /* Area Log */
-  .log {
-    background-color: #f8fafc;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    font-family: monospace;
-    font-size: 0.75rem;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    white-space: pre-wrap;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCC | QR Status Tracker</title>
+    <!-- Tailwind CSS CDN untuk styling modern dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library html5-qrcode untuk fungsi pemindaian -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        /* Custom styles untuk memastikan scanner terlihat bagus di mobile */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            touch-action: manipulation; /* Meningkatkan respons sentuh */
+        }
+        #reader {
+            width: 100%;
+            max-width: 400px; /* Batasi lebar agar tidak terlalu besar di desktop */
+            margin: auto;
+            border-radius: 0.75rem; /* rounded-xl */
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .scanner-container {
+            min-height: 250px; /* Tinggi minimum untuk area scanner */
+        }
+    </style>
 </head>
 <body>
-<div class="card">
-<h1>SCC QR Scanner — Versi Optimal</h1>
 
-<div class="controls">
-<label class="flex flex-col">Aksi:
-<select id="action">
-  <option>Picked Up</option>
-  <option>Start Work</option>
-  <option>Finish Work</option>
-  <option>Delivered</option>
-</select>
-</label>
+<div class="p-4 sm:p-6 max-w-lg mx-auto">
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-extrabold text-blue-800">SCC Tracker</h1>
+        <p class="text-gray-600 mt-1">Pindai QR Code & Perbarui Status</p>
+    </header>
 
-<label class="flex flex-col">Kamera:
-<select id="cameraSelect"><option value="">-- memuat --</option></select>
-</label>
+    <!-- Area Status Aksi -->
+    <div id="action-status" class="bg-white p-4 rounded-xl shadow-lg mb-6">
+        <p class="text-sm font-semibold text-gray-700 mb-2">Aksi Terpilih:</p>
+        <div id="selected-action" class="text-center p-3 rounded-lg text-lg font-bold bg-gray-200 text-gray-500">
+            Pilih Aksi di Bawah
+        </div>
+    </div>
 
-<button id="permBtn" class="flex-grow">Cek Izin Kamera</button>
-<button id="startBtn" disabled class="flex-grow">Mulai Pemindaian</button>
-<button id="stopBtn" disabled class="flex-grow">Berhenti</button>
-<button id="loadLocalBtn" class="bg-gray-500 hover:bg-gray-700">Muat Library Lokal</button>
-</div>
+    <!-- Area Scanner -->
+    <div id="scanner-area" class="scanner-container">
+        <div id="reader"></div>
+    </div>
 
-<div id="reader"></div>
-<div id="statusLine" class="status loading">Menunggu library...</div>
-<div class="log" id="logArea"></div>
+    <!-- Area Tombol Aksi -->
+    <div class="grid grid-cols-2 gap-4 mt-6">
+        <button data-action="Picked Up" class="action-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm sm:text-base">
+            Picked Up
+        </button>
+        <button data-action="Start Work" class="action-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm sm:text-base">
+            Start Work
+        </button>
+        <button data-action="Finish Work" class="action-btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm sm:text-base">
+            Finish Work
+        </button>
+        <button data-action="Delivered" class="action-btn bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm sm:text-base">
+            Delivered
+        </button>
+    </div>
+
+    <!-- Area Pesan Feedback -->
+    <div id="feedback" class="mt-6 p-4 rounded-xl text-center font-semibold hidden transition duration-300"></div>
+
 </div>
 
 <script>
-/* ================= SCC QR Scanner — Versi Optimal ================= */
+    // ***************************************************************
+    // KONFIGURASI PENTING: URL DEPLOYMENT BARU ANDA
+    // Pastikan ini adalah URL yang benar-benar aktif:
+    // ***************************************************************
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzze3zhwu_PZ13dyk96nauIXN__i0qOMkAhHwYmSKuw60cP3RWlM4XnQz8aT0r5hbwd/exec';
+    // ***************************************************************
 
-// URL CDN library html5-qrcode
-const CDNS = ["https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"];
+    let selectedAction = null;
+    let html5QrcodeScanner = null;
+    const feedbackEl = document.getElementById('feedback');
+    const selectedActionEl = document.getElementById('selected-action');
+    const actionButtons = document.querySelectorAll('.action-btn');
 
-// ***********************************************************************************
-// URL WEB APP DEPLOYMENT GOOGLE APPS SCRIPT
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5rW4yJLEm2bEv92-hQSEH06sxgA93dhGnhAzRR2cIM0mB6rTN3pBXwGf3hfbSplc1/exec'; 
-// ***********************************************************************************
-
-let scanner = null;
-let isScanning = false;
-
-/**
- * Fungsi untuk mencatat pesan ke area log dan konsol.
- */
-const LOG = (s, l = 'i') => {
-    const el = document.getElementById('logArea');
-    const now = new Date().toLocaleTimeString();
-    el.textContent = `${now} ${s}\n` + el.textContent;
-    if (l === 'e') console.error(s);
-    else console.log(s);
-};
-
-/**
- * Fungsi untuk memperbarui status di UI.
- */
-const setStatus = (txt, type = 'loading') => {
-    const el = document.getElementById('statusLine');
-    el.textContent = txt;
-    el.className = 'status ' + type;
-    LOG('STATUS: ' + txt);
-};
-
-/**
- * Memuat skrip eksternal secara asinkron.
- */
-function loadScript(src) {
-    return new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = res;
-        s.onerror = rej;
-        document.head.appendChild(s);
-    });
-}
-
-/**
- * Mempersiapkan fungsionalitas memuat library dari file lokal (fallback).
- */
-function attachLocalLoader() {
-    document.getElementById('loadLocalBtn').addEventListener('click', () => {
-        const f = document.createElement('input');
-        f.type = 'file';
-        f.accept = '.js';
-        f.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const blob = URL.createObjectURL(file);
-            try {
-                await loadScript(blob);
-                setStatus('Library dimuat (lokal)', 'success');
-                initAfterLib();
-            } catch (err) {
-                setStatus('Gagal memuat lokal', 'error');
-                LOG('Gagal memuat library lokal: ' + err, 'e');
-            }
-        };
-        f.click();
-    });
-}
-
-/**
- * Fungsi deduplikasi: mencegah pengiriman ganda.
- */
-function dedupeCheck(code) {
-    const now = Date.now();
-    if (!window.recentScans) window.recentScans = new Map();
-    const last = window.recentScans.get(code) || 0;
-
-    // Batas deduplikasi: 5 detik
-    if (now - last < 5000) return true;
-
-    window.recentScans.set(code, now);
-
-    // Hapus entri lama
-    for (const [k, t] of window.recentScans) if (now - t > 60000) window.recentScans.delete(k);
-
-    return false;
-}
-
-/**
- * Menangani keberhasilan pemindaian QR dan mengirim data ke Apps Script.
- */
-function onScanSuccess(decodedText) {
-    if (dedupeCheck(decodedText)) {
-        LOG('Duplikat diabaikan: ' + decodedText);
-        return;
+    // Inisialisasi Scanner
+    function initScanner() {
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", 
+                { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                /* verbose= */ false
+            );
+            html5QrcodeScanner.render(onScanSuccess, onScanError);
+        }
     }
 
-    LOG('QR Terdeteksi: ' + decodedText);
-
-    const action = document.getElementById('action').value;
-    const payload = JSON.stringify({ qr: decodedText, action: action });
-
-    // Status Awal: Menunjukkan pengiriman sedang berlangsung
-    setStatus('Mengirim data...', 'loading');
-
-    fetch(GAS_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json' 
-        },
-        body: payload,
-        mode: 'no-cors' 
-    })
-    .then(() => {
-        // PERBAIKAN: Karena mode 'no-cors' berhasil mengatasi "failed to fetch" 
-        // dan kita tidak bisa membaca respon, kita akan asumsikan data terkirim.
-        // Tampilkan pesan "terkirim" sebentar, lalu ubah ke "sukses" setelah penundaan.
-        setStatus(`Data terkirim: ${action} (${decodedText.substring(0, 10)}...)`, 'loading');
-
-        // Tunda status sukses selama 3 detik untuk memberi waktu pada Apps Script memproses
-        setTimeout(() => {
-             setStatus(`Sukses terkirim. Cek log Apps Script.`, 'success');
-        }, 3000); // Tunda 3 detik
-
-    })
-    .catch(error => {
-        // Ini hanya akan menangkap error jaringan murni (misalnya, tidak ada internet)
-        setStatus('Gagal terhubung ke server (jaringan murni)', 'error');
-        LOG('Error jaringan murni saat mengirim data: ' + error, 'e');
-    });
-}
-
-/**
- * Memulai pemindai.
- */
-async function startScanner(devId = null) {
-    if (typeof Html5Qrcode === 'undefined') {
-        setStatus('Library belum dimuat', 'error');
-        return;
-    }
-    if (isScanning) return;
-
-    const cfg = devId && devId !== "" ? { deviceId: { exact: devId } } : { facingMode: "environment" };
-    
-    const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 200 },
-        disableFlip: false 
-    };
-
-    scanner = new Html5Qrcode("reader");
-    setStatus('Memulai kamera...', 'loading');
-
-    try {
-        await scanner.start(cfg, config, onScanSuccess, (errMsg) => {
-            // Abaikan error pemindaian minor untuk menjaga log tetap bersih
-        });
-        isScanning = true;
-        document.getElementById('startBtn').disabled = true;
-        document.getElementById('stopBtn').disabled = false;
-        setStatus('Pemindai berjalan', 'success');
-    } catch (e) {
-        setStatus('Gagal memulai. Pastikan kamera dipilih dan diizinkan.', 'error');
-        LOG('Gagal memulai pemindai: ' + e, 'e');
-    }
-}
-
-/**
- * Menghentikan pemindai.
- */
-async function stopScanner() {
-    if (!isScanning || !scanner) return;
-    try {
-        await scanner.stop();
-        scanner.clear();
-    } catch (e) {
-        LOG('Error saat menghentikan pemindai: ' + e, 'e');
-    }
-    scanner = null;
-    isScanning = false;
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    setStatus('Pemindai dihentikan', 'loading');
-    LOG('Pemindai dihentikan');
-}
-
-/**
- * Mendaftarkan kamera yang tersedia dan memilih kamera belakang sebagai default.
- */
-async function listCameras() {
-    const sel = document.getElementById('cameraSelect');
-    sel.innerHTML = '<option value="">-- memuat --</option>'; 
-    
-    try {
-        const cams = await Html5Qrcode.getCameras();
-        sel.innerHTML = '';
-        let environmentCameraId = null;
-
-        cams.forEach((c, i) => {
-            const o = document.createElement('option');
-            o.value = c.id;
-            o.textContent = c.label || `Kamera ${i + 1}`;
-            sel.appendChild(o);
-            
-            // Logika untuk memilih kamera belakang (environment)
-            const labelLower = c.label.toLowerCase();
-            if (labelLower.includes('back') || labelLower.includes('environment') || labelLower.includes('belakang')) {
-                environmentCameraId = c.id;
-            }
-        });
-
-        // Tetapkan kamera belakang sebagai default
-        if (environmentCameraId) {
-            sel.value = environmentCameraId;
-            LOG('Kamera belakang otomatis terpilih.');
-        } else if (cams.length > 0) {
-            sel.value = cams[0].id;
+    // Fungsi saat pemindaian berhasil
+    function onScanSuccess(decodedText, decodedResult) {
+        if (!selectedAction) {
+            showFeedback('Peringatan: Silakan pilih salah satu aksi (Picked Up, Start Work, dll.) terlebih dahulu.', 'bg-yellow-100 text-yellow-800');
+            return;
         }
 
-        document.getElementById('startBtn').disabled = false;
+        // Hentikan scanner setelah berhasil memindai
+        stopScanner();
 
-    } catch (e) {
-        LOG('Gagal memuat daftar kamera. Periksa izin.', 'e');
-        sel.innerHTML = '<option value="">(Error Kamera)</option>';
-        document.getElementById('startBtn').disabled = true;
+        // Tampilkan pesan loading
+        showFeedback(`Mengirim OrderID: ${decodedText} dengan aksi: ${selectedAction}...`, 'bg-blue-100 text-blue-800');
+
+        // Kirim data ke Google Apps Script
+        sendDataToAppsScript(decodedText, selectedAction);
     }
-}
 
-/**
- * Meminta izin kamera dari browser.
- */
-async function checkPermission() {
-    try {
-        // Meminta izin video
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        
-        // Hentikan stream setelah mendapatkan izin
-        stream.getTracks().forEach(track => track.stop()); 
-
-        setStatus('Izin kamera diberikan', 'success');
-        await listCameras();
-    } catch (e) {
-        setStatus('Izin kamera ditolak. Beri izin di pengaturan browser Anda.', 'error');
-        LOG('Izin kamera ditolak: ' + e.name, 'e');
+    // Fungsi saat scanner error
+    function onScanError(errorMessage) {
+        // Tampilkan error jika ada masalah serius, tetapi biasanya ini adalah log debug
+        // console.error(`QR Code Scan Error: ${errorMessage}`);
     }
-}
 
-/* ================= INISIALISASI DAN EVENT LISTENERS ================= */
-
-// Event Listeners
-document.getElementById('permBtn').addEventListener('click', () => checkPermission());
-document.getElementById('startBtn').addEventListener('click', () => startScanner(document.getElementById('cameraSelect').value));
-document.getElementById('stopBtn').addEventListener('click', () => stopScanner());
-document.getElementById('cameraSelect').addEventListener('change', () => {
-    if (isScanning) {
-        stopScanner().then(() => startScanner(document.getElementById('cameraSelect').value));
+    // Fungsi untuk menghentikan dan merender ulang scanner (penting untuk menghindari loop)
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().catch(error => {
+                console.error("Gagal menghentikan scanner: ", error);
+            });
+            html5QrcodeScanner = null;
+        }
     }
-});
 
-// Fungsi yang dijalankan setelah library html5-qrcode berhasil dimuat
-async function initAfterLib() {
-    await checkPermission(); 
-}
+    // Menangani pemilihan aksi (button click)
+    actionButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            selectedAction = e.target.dataset.action;
 
-// Inisialisasi: Coba muat library
-(async () => {
-    try {
-        await loadScript(CDNS[0]);
-        setStatus('Library dimuat (CDN)', 'success');
-        initAfterLib();
-        attachLocalLoader();
-    } catch (e) {
-        // PERBAIKAN: Tangani kesalahan [object Event] yang dihasilkan oleh s.onerror
-        let errMsg = e instanceof Event ? 'File CDN tidak dapat dimuat (kemungkinan masalah jaringan atau izin).' : e.toString();
-        setStatus('CDN gagal. Coba "Muat Library Lokal".', 'error');
-        LOG('Gagal memuat CDN: ' + errMsg, 'e');
-        attachLocalLoader();
+            // Reset tampilan tombol
+            actionButtons.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
+            
+            // Tandai tombol yang terpilih
+            e.target.classList.add('ring-4', 'ring-offset-2', 'ring-blue-500');
+
+            // Update status di UI
+            selectedActionEl.textContent = selectedAction;
+            selectedActionEl.classList.remove('bg-gray-200', 'text-gray-500', 'bg-red-200', 'text-red-800');
+            selectedActionEl.classList.add('bg-blue-500', 'text-white');
+            
+            showFeedback(`Aksi '${selectedAction}' terpilih. Silakan pindai QR Code.`, 'bg-blue-100 text-blue-800');
+
+            // Mulai ulang scanner jika belum berjalan
+            initScanner();
+        });
+    });
+
+    // Fungsi untuk menampilkan pesan feedback
+    function showFeedback(message, className) {
+        feedbackEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800');
+        feedbackEl.classList.add(className);
+        feedbackEl.textContent = message;
     }
-})();
+
+    // Fungsi utama untuk mengirim data ke Apps Script
+    async function sendDataToAppsScript(qrCode, action) {
+        const payload = {
+            qr: qrCode,
+            action: action
+        };
+
+        try {
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Penting untuk Apps Script Web App dari domain lain
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            // Karena mode: 'no-cors', kita hanya bisa berasumsi sukses jika fetch berhasil.
+            showFeedback(`✅ Sukses terkirim! Status '${action}' untuk OrderID '${qrCode}' telah diperbarui.`, 'bg-green-100 text-green-800');
+            
+        } catch (error) {
+            console.error('Error saat mengirim data:', error);
+            showFeedback(`❌ Error saat koneksi: ${error.message}. Cek koneksi atau URL Apps Script.`, 'bg-red-100 text-red-800');
+        } finally {
+            // Setelah proses selesai (sukses atau gagal), reset state
+            setTimeout(() => {
+                selectedAction = null;
+                selectedActionEl.textContent = 'Pilih Aksi di Bawah';
+                selectedActionEl.classList.remove('bg-blue-500', 'text-white');
+                selectedActionEl.classList.add('bg-gray-200', 'text-gray-500');
+                actionButtons.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
+                initScanner(); // Mulai ulang scanner untuk pemindaian berikutnya
+            }, 3000); // Tunggu 3 detik sebelum reset
+        }
+    }
+
+    // Mulai Scanner saat halaman dimuat
+    window.onload = function() {
+        showFeedback('Pilih aksi untuk memulai pemindaian.', 'bg-gray-200 text-gray-700');
+    };
 </script>
+
 </body>
 </html>
