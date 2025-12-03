@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SCC QR Scanner — Beauty Edition</title>
+<title>SCC QR Scanner — SCC Flow</title>
 <style>
-  /* --- Reset & font --- */
+  /* Reset & font */
   *{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
   body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
   
-  /* --- Container card --- */
+  /* Container card */
   .scanner-card{
     background:#fff;
     border-radius:15px;
@@ -21,7 +21,7 @@
 
   h1{font-size:22px;margin-bottom:12px;text-align:center;color:#222;}
 
-  /* --- Controls --- */
+  /* Controls */
   .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
   .controls label{font-size:14px;color:#555;}
   select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
@@ -33,7 +33,7 @@
   button:hover{background:#333;}
   button:disabled{opacity:0.5;cursor:not-allowed;}
 
-  /* --- Camera feed --- */
+  /* Camera feed */
   #reader{
     width:100%;height:260px;
     border-radius:12px;
@@ -44,7 +44,7 @@
     margin-bottom:12px;
   }
 
-  /* --- Status --- */
+  /* Status */
   .status{
     font-size:14px;
     margin-bottom:8px;
@@ -55,10 +55,10 @@
   .status.success{background:#d4edda;color:#155724;}
   .status.error{background:#f8d7da;color:#721c24;}
 
-  /* --- Pending & last send --- */
+  /* Pending & last send */
   .small{font-size:12px;color:#555;margin-bottom:6px;display:flex;justify-content:space-between;}
 
-  /* --- Log --- */
+  /* Log */
   .log{
     background:#f7f7f7;
     padding:10px;
@@ -74,13 +74,17 @@
 <body>
 
 <div class="scanner-card">
-  <h1>SCC QR Scanner — Beauty Edition</h1>
+  <h1>SCC QR Scanner — SCC Flow</h1>
 
   <div class="controls">
     <label>Aksi:<br>
       <select id="action">
-        <option>Picked Up</option>
-        <option>Delivered</option>
+        <option value="Order Received">Order Received</option>
+        <option value="Processing">Processing</option>
+        <option value="Picked Up">Picked Up</option>
+        <option value="In Transit">In Transit</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Completed">Completed</option>
       </select>
     </label>
 
@@ -109,9 +113,7 @@
 </div>
 
 <script>
-/* ===========================
-  SCC QR Scanner — Robust + Beauty
-=========================== */
+/* SCC QR Scanner — SCC Flow */
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
@@ -140,7 +142,7 @@ setInterval(()=>{trySendNext();},15000);
 
 let scanner=null;let isScanning=false;const recentScans=new Map();const DEDUPE_WINDOW_MS=5000;
 function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
-async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try{scanner.clear();}catch(e){}scanner=null;isScanning=false;}}}
+async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try{scanner.clear();}catch(e){}scanner=null;isScanning=false;}}
 
 function onScanSuccess(decodedText,decodedResult){if(dedupeCheck(decodedText)){LOG('Duplicate scan ignored: '+decodedText);return;}LOG('QR detected: '+decodedText);const payload={qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()};pushQueue(payload);document.getElementById('pendingCount').textContent=loadQueue().length;trySendNext();if(scanner && typeof scanner.pause==='function'){try{scanner.pause(true);setTimeout(()=>{try{scanner.resume();}catch(e){}},900);}catch(e){}}}
 function onScanFailure(err){}
