@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SCC QR Scanner CDN-Ready</title>
+<title>SCC QR Scanner Final</title>
 <style>
 body{font-family:Arial,sans-serif;background:#f0f2f5;display:flex;justify-content:center;padding:20px;}
 .card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:480px;width:100%;}
@@ -34,7 +34,7 @@ table th, table td{padding:6px 8px;border:1px solid #ccc;text-align:left;font-si
 </head>
 <body>
 <div class="card">
-<h1>SCC QR Scanner CDN</h1>
+<h1>SCC QR Scanner Final</h1>
 
 <div class="controls">
 <label>Aksi:<br>
@@ -80,8 +80,8 @@ table th, table td{padding:6px 8px;border:1px solid #ccc;text-align:left;font-si
 const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
 const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-function initCDNScanner(){
-const QUEUE_KEY='scc_qr_queue_cdn';
+function initScannerFinal(){
+const QUEUE_KEY='scc_qr_queue_final';
 let scanner=null,isScanning=false,recentScans=new Map(),DEDUPE_MS=5000;
 const tableBody=document.querySelector('#scanTable tbody');
 
@@ -166,7 +166,7 @@ checkPermission();
 
 window.addEventListener('DOMContentLoaded', ()=>{
 if(!window.Html5Qrcode){console.error("Library CDN belum terload!"); return;}
-initCDNScanner();
+initScannerFinal();
 });
 </script>
 </body>
