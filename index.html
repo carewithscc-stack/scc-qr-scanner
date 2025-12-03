@@ -2,218 +2,233 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SCC QR Scanner — Final Simplified</title>
-<!-- Gaya diambil dari file referensi Anda, dengan penyesuaian kecil -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SCC QR Scanner - Desain iOS/App Native</title>
+<!-- Menggunakan CDN Tailwind untuk kelas utilitas dan estetika modern -->
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-    body { 
-        font-family: Arial, sans-serif; 
-        background: #f0f2f5; 
-        padding: 20px; 
-        display: flex; 
-        justify-content: center; 
-        min-height: 100vh;
-        margin: 0;
-    }
-    .card { 
-        background: #fff; 
-        border-radius: 15px; 
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); 
-        padding: 20px; 
-        width: 100%;
-        max-width: 420px; /* Lebar maksimum seperti di referensi */
-        box-sizing: border-box;
-    }
-    h1 { 
-        text-align: center; 
-        color: #222; 
-        margin-bottom: 12px; 
-        font-size: 24px; 
-        font-weight: bold;
-    }
-    .controls { 
-        display: flex; 
-        flex-wrap: wrap; 
-        gap: 10px; 
-        justify-content: center; 
-        margin-bottom: 15px; 
-    }
-    .action-group {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-    }
-    .action-group select, .action-group button {
-        width: 100%;
-    }
-    select, input, button { 
-        font-size: 14px; 
-        padding: 10px; 
-        border-radius: 8px;
-        box-sizing: border-box; 
-        border: 1px solid #ccc;
-        background: #f9f9f9;
-    }
-    button { 
-        cursor: pointer; 
-        border: none; 
-        background: #007bff; /* Warna biru untuk tombol Start/Stop */
-        color: #fff; 
-        font-weight: bold; 
-        transition: .2s; 
-    }
-    button:hover { 
-        background: #0056b3; 
-    }
-    #reader { 
-        width: 100%; 
-        height: 260px; 
-        background: #000; 
-        border-radius: 12px; 
-        border: 2px solid #444; 
-        margin-bottom: 12px;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        text-align: center;
-        font-size: 16px;
-    }
-    .status { 
-        padding: 8px 12px; /* Disesuaikan agar sedikit lebih besar */
-        border-radius: 8px; 
-        margin-bottom: 12px; /* Disesuaikan */
-        font-weight: bold;
-    }
-    .status.loading { 
-        background: #fff8c6; 
-        color: #9a6f00; 
-    }
-    .status.success { 
-        background: #d4edda; 
-        color: #155724; 
-    }
-    .status.error { 
-        background: #f8d7da; 
-        color: #721c24; 
-    }
-    .log { 
-        background: #f7f7f7; 
-        padding: 10px; 
-        border-radius: 10px; 
-        font-family: monospace; 
-        font-size: 12px; 
-        max-height: 160px; 
-        overflow-y: auto; 
-        border: 1px solid #eee; 
-    }
-    /* Gaya untuk Spanduk Peringatan HTTPS */
-    #https-warning {
-        background-color: #dc3545; /* Merah */
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-    .action-buttons-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        margin-top: 15px;
-    }
-    .action-buttons-grid button {
-        background: #333;
-    }
-    .action-buttons-grid button.selected {
-        background: #155724;
-        border: 2px solid #d4edda;
-    }
+  /* Menetapkan font default yang mirip iOS dan styling dasar */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  :root { font-family: 'Inter', sans-serif; }
+  /* Gaya full-screen app-like */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; 
+    min-height: 100vh;
+    background-color: #f0f4f8;
+    padding: 0; /* Hapus padding default */
+  }
+  /* Gaya App Container (seperti layar iPhone) */
+  .card {
+    background: #ffffff;
+    padding: 0; /* Padding akan diberikan di dalam elemen anak */
+    width: 100%;
+    max-width: 480px; /* Batasan lebar seperti ponsel */
+    min-height: 100vh; /* Ambil seluruh tinggi viewport */
+    border-radius: 0; /* Hilangkan border-radius agar terlihat seamless dengan body */
+    box-shadow: none; /* Hilangkan shadow di mode full-screen */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Header dengan padding ala status bar mobile */
+  .app-header {
+    background-color: #ffffff;
+    padding: 1.5rem 1rem 0.75rem 1rem;
+    border-bottom: 1px solid #f0f4f8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  h1 { 
+    color: #1e293b; 
+    font-size: 1.25rem; /* Lebih kecil dan elegan */
+    font-weight: 600; 
+    text-align: center; 
+    margin-bottom: 0.5rem; 
+  }
+
+  /* Konten utama */
+  .app-content {
+    padding: 1rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Gaya elemen kontrol */
+  select, input, button {
+    font-size: 1rem; /* Ukuran sentuh lebih besar */
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem; /* Rounded corners lebih halus */
+    transition: all 0.2s;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    width: 100%;
+  }
+
+  /* Gaya Tombol Aksi */
+  button {
+    cursor: pointer;
+    border: none;
+    background-color: #007aff; /* Warna primer iOS Blue */
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3); /* Shadow iOS-like */
+  }
+  button:hover:not(:disabled) { 
+    background-color: #0056b3; 
+    box-shadow: 0 1px 2px rgba(0, 122, 255, 0.5); 
+    transform: none; /* iOS doesn't typically translate */
+  }
+  button:active:not(:disabled) { 
+    background-color: #004c99; 
+    transform: translateY(1px); /* Efek sentuhan */
+  }
+  button:disabled { 
+    background-color: #cbd5e1; 
+    color: #71717a; 
+    cursor: not-allowed; 
+    box-shadow: none;
+  }
+  
+  /* Grup tombol agar tetap rapi */
+  .controls-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .controls-group .flex-grow {
+    flex-grow: 1;
+  }
+
+  label { font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.25rem; }
+  
+  /* Area Pemindai */
+  #reader {
+    width: 100%;
+    height: 350px; /* Lebih tinggi untuk fokus scanning */
+    background: #000;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 5px solid #007aff; /* Border biru iOS */
+    margin-bottom: 1rem;
+  }
+
+  /* Gaya Status */
+  .status {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    border: none; /* Hilangkan border, hanya pakai warna background */
+  }
+  .status.loading { background-color: #ffcc0044; color: #8e6a00; }
+  .status.success { background-color: #34c75944; color: #006000; }
+  .status.error { background-color: #ff3b3044; color: #8e0000; }
+  
+  /* Area Log */
+  .log {
+    background-color: #f8fafc;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
 <div class="card">
-    <!-- SPANDUK PERINGATAN HTTPS KRITIS -->
-    <div id="https-warning" class="hidden">
-        <p class="text-lg">‼️ PERINGATAN KRITIS ‼️</p>
-        <p class="mt-1">AKSES KAMERA DIBLOKIR. Anda HARUS menggunakan URL HTTPS untuk mengaktifkan scanner.</p>
+<div class="app-header">
+  <h1>SCC QR Scanner — Resilient Mode</h1>
+</div>
+
+<div class="app-content">
+
+  <!-- Bagian Pemindaian dan Status -->
+  <div id="reader"></div>
+  <div id="statusLine" class="status loading">Menunggu library...</div>
+  
+  <!-- Kontrol Utama (Pilih Aksi) -->
+  <label class="flex flex-col">Aksi / Status Baru:
+    <select id="action">
+      <option>Picked Up</option>
+      <option>Start Work</option>
+      <option>Finish Work</option>
+      <option>Delivered</option>
+    </select>
+  </label>
+
+  <!-- Kontrol Kamera -->
+  <label class="flex flex-col">Kamera:
+    <select id="cameraSelect"><option value="">-- memuat --</option></select>
+  </label>
+
+  <!-- Grup Tombol Aksi -->
+  <div class="controls-group mt-2">
+    <button id="permBtn" class="bg-gray-400 hover:bg-gray-500">Cek Izin Kamera</button>
+    <div class="flex gap-2">
+      <button id="startBtn" disabled class="flex-grow">Mulai Pemindaian</button>
+      <button id="stopBtn" disabled class="flex-grow bg-red-500 hover:bg-red-600 shadow-none">Berhenti</button>
     </div>
+  </div>
 
-    <h1>SCC QR Scanner</h1>
+  <!-- Debug & Fallback (Sekarang diaktifkan kembali) -->
+  <button id="loadLocalBtn" class="bg-gray-500 hover:bg-gray-700 mt-4 text-xs">Muat Library Lokal (Fallback)</button>
+  <div class="log" id="logArea"></div>
+</div>
 
-    <div class="controls">
-        <div class="action-group">
-            <label for="action" style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">Aksi Terpilih:</label>
-            <select id="action">
-                <option value="Picked Up">Picked Up</option>
-                <option value="Start Work">Start Work</option>
-                <option value="Finish Work">Finish Work</option>
-                <option value="Delivered">Delivered</option>
-            </select>
-        </div>
-        
-        <!-- Pilihan Kamera Dihapus untuk menyederhanakan -->
-
-        <button id="startBtn">Mulai Pindai</button>
-        <button id="stopBtn" disabled style="background:#dc3545;">Hentikan Pindai</button>
-    </div>
-
-    <div id="reader">Scanner nonaktif. Akses via HTTPS diperlukan.</div>
-    <div id="statusLine" class="status loading">Menunggu inisialisasi...</div>
-    <div class="log" id="logArea"></div>
 </div>
 
 <script>
-/* ================= SCC QR Scanner — Simplified and Styled ================= */
-// URL Apps Script dari referensi terbaru Anda
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJvluaqqe3J_suB8RBWMptb51Iw7msr3R1KDB204w0XoBaZwlcahDZzJKaY90fiBcw/exec';
-const HTML5_QRCODE_CDN = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js";
+/* ================= SCC QR Scanner — Versi Optimal ================= */
 
-// Elemen UI
-const logAreaEl = document.getElementById('logArea');
-const statusLineEl = document.getElementById('statusLine');
-const readerEl = document.getElementById('reader');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const actionSelect = document.getElementById('action');
-const httpsWarningEl = document.getElementById('https-warning');
+// URL CDN library html5-qrcode
+const CDNS = ["https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"];
 
-const DEBOUNCE_TIME_MS = 1500;
-const DEDUPE_TIME_MS = 5000;
+// ***********************************************************************************
+// URL WEB APP DEPLOYMENT GOOGLE APPS SCRIPT (Harus diganti dengan URL deployment Anda)
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5rW4yJLEm2bEv92-hQSEH06sxgA93dhGnhAzRR2cIM0mB6rTN3pBXwGf3hfbSplc1/exec'; 
+// ***********************************************************************************
 
-// --- UTILITY FUNCTIONS ---
+let scanner = null;
+let isScanning = false;
 
+/**
+ * Fungsi untuk mencatat pesan ke area log dan konsol.
+ */
 const LOG = (s, l = 'i') => {
-    const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const logEntry = document.createElement('div');
-    logEntry.innerHTML = `[${now}] ${s}`;
+    const el = document.getElementById('logArea');
+    const now = new Date().toLocaleTimeString('id-ID');
+    // Batasi jumlah log di UI agar tidak terlalu panjang
+    const newLog = document.createElement('div');
+    newLog.textContent = `${now} | ${s}`;
+    el.prepend(newLog);
+    if(el.children.length > 20) el.removeChild(el.lastChild);
     
-    // Menampilkan log terbaru di atas
-    if (logAreaEl.firstChild) {
-        logAreaEl.insertBefore(logEntry, logAreaEl.firstChild);
-    } else {
-        logAreaEl.appendChild(logEntry);
-    }
-    // Batasi log
-    while (logAreaEl.children.length > 30) {
-        logAreaEl.removeChild(logAreaEl.lastChild);
-    }
-
     if (l === 'e') console.error(s);
-    else if (l === 'w') console.warn(s);
     else console.log(s);
 };
 
+/**
+ * Fungsi untuk memperbarui status di UI.
+ */
 const setStatus = (txt, type = 'loading') => {
-    statusLineEl.textContent = txt;
-    statusLineEl.className = 'status ' + type;
-    LOG('STATUS: ' + txt, type === 'error' ? 'e' : (type === 'warning' ? 'w' : 'i'));
+    const el = document.getElementById('statusLine');
+    el.textContent = txt;
+    el.className = 'status ' + type;
+    LOG('STATUS: ' + txt);
 };
 
-const loadScript = (src) => {
+/**
+ * Memuat skrip eksternal secara asinkron.
+ */
+function loadScript(src) {
     return new Promise((res, rej) => {
         const s = document.createElement('script');
         s.src = src;
@@ -221,213 +236,249 @@ const loadScript = (src) => {
         s.onerror = rej;
         document.head.appendChild(s);
     });
-};
+}
 
-// --- SCANNER LOGIC ---
+/**
+ * Mempersiapkan fungsionalitas memuat library dari file lokal (fallback).
+ * Listener dipasang di sini, dan dipanggil saat inisialisasi utama.
+ */
+function attachLocalLoader() {
+    const localBtn = document.getElementById('loadLocalBtn');
+    if (localBtn) { 
+        localBtn.addEventListener('click', () => {
+            const f = document.createElement('input');
+            f.type = 'file';
+            f.accept = '.js';
+            f.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const blob = URL.createObjectURL(file);
+                try {
+                    await loadScript(blob);
+                    setStatus('Library dimuat (lokal)', 'success');
+                    initAfterLib();
+                } catch (err) {
+                    setStatus('Gagal memuat lokal', 'error');
+                    LOG('Gagal memuat library lokal: ' + err, 'e');
+                }
+            };
+            f.click();
+        });
+    }
+}
 
-let scanner = null;
-let isScanning = false;
-
+/**
+ * Fungsi deduplikasi: mencegah pengiriman ganda dalam waktu singkat (5 detik).
+ * Adaptasi: Mengatasi keterbatasan double scan/re-scan yang cepat.
+ */
 function dedupeCheck(code) {
     const now = Date.now();
     if (!window.recentScans) window.recentScans = new Map();
     const last = window.recentScans.get(code) || 0;
-    
-    // Cek apakah scan duplikat dalam batas waktu DEDUPE_TIME_MS
-    if (now - last < DEDUPE_TIME_MS) return true; 
-    
+
+    // Batas deduplikasi: 5 detik
+    if (now - last < 5000) return true;
+
     window.recentScans.set(code, now);
-    
-    // Bersihkan map dari entri yang sangat lama
-    for (const [k, t] of window.recentScans) {
-        if (now - t > 60000) window.recentScans.delete(k);
-    }
+
+    // Hapus entri lama
+    for (const [k, t] of window.recentScans) if (now - t > 60000) window.recentScans.delete(k);
+
     return false;
 }
 
-function setReaderPlaceholder(message) {
-    // Memastikan placeholder ditampilkan dengan baik di area #reader
-    readerEl.innerHTML = `<div style="padding: 10px;">${message}</div>`;
+/**
+ * Menangani keberhasilan pemindaian QR dan mengirim data ke Apps Script.
+ */
+function onScanSuccess(decodedText) {
+    if (dedupeCheck(decodedText)) {
+        LOG('Duplikat diabaikan: ' + decodedText);
+        return;
+    }
+
+    LOG('QR Terdeteksi: ' + decodedText);
+
+    const action = document.getElementById('action').value;
+    const payload = JSON.stringify({ qr: decodedText, action: action });
+
+    // Status Awal: Menunjukkan pengiriman sedang berlangsung
+    setStatus('Mengirim data...', 'loading');
+
+    // Mengirim data ke Apps Script menggunakan fetch dan mode 'no-cors'.
+    // Ini mengasumsikan sukses jika tidak ada error jaringan, karena Apps Script akan memprosesnya.
+    fetch(GAS_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json' 
+        },
+        body: payload,
+        mode: 'no-cors' 
+    })
+    .then(() => {
+        // Asumsikan sukses
+        setStatus(`Data terkirim: ${action} (${decodedText.substring(0, 10)}...)`, 'loading');
+
+        // Tunda status sukses nyata untuk feedback visual yang lebih baik
+        setTimeout(() => {
+             setStatus(`Sukses! ${action} untuk ${decodedText.substring(0, 10)}.`, 'success');
+        }, 2000); 
+
+    })
+    .catch(error => {
+        // Ini hanya akan menangkap error jaringan murni (misalnya, tidak ada internet)
+        setStatus('Gagal terhubung ke server (jaringan murni)', 'error');
+        LOG('Error jaringan murni saat mengirim data: ' + error, 'e');
+    });
 }
 
-async function startScanner() {
+/**
+ * Memulai pemindai.
+ */
+async function startScanner(devId = null) {
     if (typeof Html5Qrcode === 'undefined') {
-        setStatus('Library Html5Qrcode belum dimuat.', 'error');
+        setStatus('Library belum dimuat', 'error');
         return;
     }
+    if (isScanning) return;
 
-    // 1. Cek HTTPS
-    if (location.protocol !== 'https:') {
-        setStatus('❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.', 'error');
-        setReaderPlaceholder('GAGAL. Akses via HTTPS diperlukan.');
-        return;
-    }
-
-    // 2. Hentikan jika sudah berjalan
-    if (isScanning) {
-        await stopScanner(false); // Hentikan tanpa set status akhir
-    }
+    // Prioritaskan kamera belakang/environment
+    const cfg = devId && devId !== "" ? { deviceId: { exact: devId } } : { facingMode: "environment" };
     
-    scanner = new Html5Qrcode("reader");
-    
-    // 3. Konfigurasi untuk kamera belakang/environment
-    const videoConstraints = {
-        facingMode: "environment" // Prioritas kamera belakang
+    const config = {
+        fps: 10,
+        qrbox: { width: 280, height: 200 },
+        disableFlip: false 
     };
 
-    setStatus('Memulai kamera... (Mohon izinkan akses)', 'loading');
-    startBtn.disabled = true;
-    
+    scanner = new Html5Qrcode("reader");
+    setStatus('Memulai kamera...', 'loading');
+
     try {
-        await scanner.start(
-            videoConstraints,
-            { fps: 10, qrbox: { width: 280, height: 200 } },
-            onScanSuccess,
-            (errorMessage) => {
-                // Pesan error non-fatal (noise) bisa diabaikan
-                if (isScanning) return;
-                // Jika error saat start
-                if(scanner && scanner.getState() !== 2) {
-                    LOG("Gagal memulai kamera: " + errorMessage, 'e');
-                    setStatus('❌ Gagal: Coba tekan "Mulai Pindai" atau cek izin.', 'error');
-                    setReaderPlaceholder('GAGAL MEMULAI KAMERA. Cek izin browser.');
-                    startBtn.disabled = false;
-                }
-            }
-        );
+        await scanner.start(cfg, config, onScanSuccess, (errMsg) => {
+            // Abaikan error pemindaian minor
+        });
         isScanning = true;
-        stopBtn.disabled = false;
-        setStatus('Scanner berjalan. Pilih aksi dan pindai QR.', 'success');
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        setStatus('Pemindai berjalan', 'success');
     } catch (e) {
-        isScanning = false;
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-        LOG("Gagal memulai atau izin ditolak: " + e.message, 'e');
-        setStatus('❌ Error fatal: Izin ditolak atau gagal memulai. Pastikan Anda di HTTPS.', 'error');
-        setReaderPlaceholder('IZIN DITOLAK. Klik "Mulai Pindai" untuk coba lagi.');
+        setStatus('Gagal memulai. Pastikan kamera dipilih dan diizinkan.', 'error');
+        LOG('Gagal memulai pemindai: ' + e, 'e');
     }
 }
 
-async function stopScanner(setFinalStatus = true) {
+/**
+ * Menghentikan pemindai.
+ */
+async function stopScanner() {
     if (!isScanning || !scanner) return;
-    setStatus('Menghentikan scanner...');
     try {
         await scanner.stop();
         scanner.clear();
     } catch (e) {
-        LOG("Error saat menghentikan scanner: " + e.message, 'w');
+        LOG('Error saat menghentikan pemindai: ' + e, 'e');
     }
     scanner = null;
     isScanning = false;
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    if (setFinalStatus) {
-        setStatus('Scanner dihentikan.', 'loading');
-        setReaderPlaceholder('Scanner nonaktif. Tekan "Mulai Pindai".');
-    }
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+    setStatus('Pemindai dihentikan', 'loading');
+    LOG('Pemindai dihentikan');
 }
 
-function onScanSuccess(decodedText) {
-    if (dedupeCheck(decodedText)) {
-        LOG('QR Code diabaikan (Duplikasi): ' + decodedText, 'w');
-        return;
-    }
-
-    const selectedAction = actionSelect.value;
+/**
+ * Mendaftarkan kamera yang tersedia dan memilih kamera belakang sebagai default.
+ */
+async function listCameras() {
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = '<option value="">-- memuat --</option>'; 
     
-    stopScanner(false).then(() => {
-        setStatus(`QR Diterima: ${decodedText}. Mengirim aksi: ${selectedAction}...`, 'loading');
-        sendDataToAppsScript(decodedText, selectedAction);
-    });
-}
-
-// --- APPS SCRIPT COMMUNICATION ---
-
-async function sendDataToAppsScript(qrCode, action) {
-    const payload = { qr: qrCode, action: action };
-    LOG('Mencoba mengirim data ke Apps Script...');
-
     try {
-        for (let i = 0; i < 3; i++) {
-            try {
-                // Menggunakan fetch dengan no-cors untuk Apps Script
-                await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                LOG(`Pengiriman sukses pada percobaan ke-${i + 1}.`);
-                break; 
-            } catch (e) {
-                LOG(`Gagal kirim data (Percobaan ${i + 1}): ${e.message}`, 'w');
-                if (i < 2) { 
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); 
-                } else { 
-                    throw e; 
-                }
+        const cams = await Html5Qrcode.getCameras();
+        sel.innerHTML = '';
+        let environmentCameraId = null;
+
+        cams.forEach((c, i) => {
+            const o = document.createElement('option');
+            o.value = c.id;
+            o.textContent = c.label || `Kamera ${i + 1}`;
+            sel.appendChild(o);
+            
+            // Logika untuk memilih kamera belakang (environment) sebagai default
+            const labelLower = c.label.toLowerCase();
+            if (labelLower.includes('back') || labelLower.includes('environment') || labelLower.includes('belakang')) {
+                environmentCameraId = c.id;
             }
+        });
+
+        if (environmentCameraId) {
+            sel.value = environmentCameraId;
+            LOG('Kamera belakang otomatis terpilih.');
+        } else if (cams.length > 0) {
+            sel.value = cams[0].id;
         }
-        setStatus(`✅ Sukses! Status '${action}' untuk OrderID '${qrCode}' telah diperbarui.`, 'success');
-        
-    } catch (error) {
-        LOG('Error fatal saat koneksi/pengiriman: ' + error.message, 'e');
-        setStatus(`❌ Error: ${error.message}. Gagal terhubung ke Apps Script.`, 'error');
-    } finally {
-        // Reset state dan mulai ulang scanner setelah delay
-        setTimeout(() => {
-            LOG('Memulai ulang scanner.');
-            if (location.protocol === 'https:') {
-                startScanner(); 
-            }
-        }, DEBOUNCE_TIME_MS); 
-    }
-}
 
-// --- INITIALIZATION ---
-
-function checkSecureContext() {
-    if (location.protocol !== 'https:') {
-        httpsWarningEl.classList.remove('hidden');
-        setStatus('❌ PERINGATAN! Kamera diblokir. Akses via HTTPS diperlukan.', 'error');
-        setReaderPlaceholder('AKSES KAMERA DIBLOKIR. Anda harus menggunakan HTTPS.');
-        LOG('Aplikasi berjalan di HTTP. Akses kamera akan diblokir oleh browser.', 'e');
-    } else {
-        httpsWarningEl.classList.add('hidden');
-        LOG('Koneksi aman (HTTPS). Lanjut memuat library.');
-    }
-}
-
-async function init() {
-    LOG('Aplikasi dimuat. Memulai inisialisasi.');
-    checkSecureContext(); 
-
-    // Muat library QR Code
-    try {
-        await loadScript(HTML5_QRCODE_CDN);
-        setStatus('Library pemindaian dimuat.', 'loading');
-        
-        // Aktifkan tombol dan coba mulai scanner jika HTTPS
-        startBtn.disabled = false;
-        if (location.protocol === 'https:') {
-            startScanner();
-        } else {
-            setStatus('Pilih aksi dan siapkan kamera (Akses via HTTPS).', 'info');
-        }
+        document.getElementById('startBtn').disabled = false;
 
     } catch (e) {
-        setStatus('❌ GAGAL memuat library pemindaian.', 'error');
-        LOG('Gagal memuat CDN Html5Qrcode: ' + e.message, 'e');
-        startBtn.disabled = true;
+        LOG('Gagal memuat daftar kamera. Periksa izin.', 'e');
+        sel.innerHTML = '<option value="">(Error Kamera)</option>';
+        document.getElementById('startBtn').disabled = true;
     }
 }
 
-// Tambahkan event listeners
-startBtn.addEventListener('click', startScanner);
-stopBtn.addEventListener('click', () => stopScanner(true));
+/**
+ * Meminta izin kamera dari browser.
+ */
+async function checkPermission() {
+    try {
+        // Meminta izin video
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        
+        // Hentikan stream setelah mendapatkan izin
+        stream.getTracks().forEach(track => track.stop()); 
 
-// Mulai
-window.onload = init;
+        setStatus('Izin kamera diberikan', 'success');
+        await listCameras();
+    } catch (e) {
+        setStatus('Izin kamera ditolak. Beri izin di pengaturan browser Anda.', 'error');
+        LOG('Izin kamera ditolak: ' + e.name, 'e');
+    }
+}
+
+/* ================= INISIALISASI DAN EVENT LISTENERS ================= */
+
+// Event Listeners
+document.getElementById('permBtn').addEventListener('click', () => checkPermission());
+document.getElementById('startBtn').addEventListener('click', () => startScanner(document.getElementById('cameraSelect').value));
+document.getElementById('stopBtn').addEventListener('click', () => stopScanner());
+document.getElementById('cameraSelect').addEventListener('change', () => {
+    if (isScanning) {
+        // Otomatis restart scanner jika kamera diubah saat sedang berjalan
+        stopScanner().then(() => startScanner(document.getElementById('cameraSelect').value));
+    }
+});
+
+// Fungsi yang dijalankan setelah library html5-qrcode berhasil dimuat
+async function initAfterLib() {
+    await checkPermission(); 
+}
+
+// Inisialisasi: Coba muat library
+(async () => {
+    try {
+        await loadScript(CDNS[0]);
+        setStatus('Library dimuat (CDN)', 'success');
+        initAfterLib();
+    } catch (e) {
+        let errMsg = e instanceof Event ? 'File CDN tidak dapat dimuat (kemungkinan masalah jaringan atau izin).' : e.toString();
+        // Mengubah pesan status untuk mengarahkan pengguna ke tombol fallback yang kini aktif
+        setStatus('CDN gagal. Coba "Muat Library Lokal" di bawah.', 'error'); 
+        LOG('Gagal memuat CDN: ' + errMsg, 'e');
+    }
+    // PENTING: Attach listener untuk Local Loader terlepas dari keberhasilan CDN
+    attachLocalLoader();
+})();
 </script>
 </body>
 </html>
