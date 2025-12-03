@@ -216,28 +216,33 @@ function onScanSuccess(decodedText) {
     const action = document.getElementById('action').value;
     const payload = JSON.stringify({ qr: decodedText, action: action });
 
+    // Status Awal: Menunjukkan pengiriman sedang berlangsung
     setStatus('Mengirim data...', 'loading');
 
     fetch(GAS_URL, {
         method: 'POST',
         headers: {
-            // Kita tetap menyertakan Content-Type, meskipun mungkin diabaikan oleh 'no-cors'
             'Content-Type': 'application/json' 
         },
         body: payload,
-        // *** PERBAIKAN FAILED TO FETCH: Menambahkan mode no-cors untuk menghindari blokir CORS ***
         mode: 'no-cors' 
     })
     .then(() => {
-        // Karena mode 'no-cors' membuat respons tidak dapat dibaca (opaque), 
-        // kita berasumsi pengiriman berhasil jika promise fetch terselesaikan.
-        setStatus(`Data berhasil dikirim ke server.`, 'success');
-        LOG('Permintaan fetch selesai tanpa error jaringan (mode no-cors). Harap cek log Apps Script.');
+        // PERBAIKAN: Karena mode 'no-cors' berhasil mengatasi "failed to fetch" 
+        // dan kita tidak bisa membaca respon, kita akan asumsikan data terkirim.
+        // Tampilkan pesan "terkirim" sebentar, lalu ubah ke "sukses" setelah penundaan.
+        setStatus(`Data terkirim: ${action} (${decodedText.substring(0, 10)}...)`, 'loading');
+
+        // Tunda status sukses selama 3 detik untuk memberi waktu pada Apps Script memproses
+        setTimeout(() => {
+             setStatus(`Sukses terkirim. Cek log Apps Script.`, 'success');
+        }, 3000); // Tunda 3 detik
+
     })
     .catch(error => {
-        // Menambahkan detail error di catch
-        setStatus('Gagal terhubung ke server (jaringan atau CORS)', 'error');
-        LOG('Error jaringan/CORS saat mengirim data: ' + error, 'e');
+        // Ini hanya akan menangkap error jaringan murni (misalnya, tidak ada internet)
+        setStatus('Gagal terhubung ke server (jaringan murni)', 'error');
+        LOG('Error jaringan murni saat mengirim data: ' + error, 'e');
     });
 }
 
