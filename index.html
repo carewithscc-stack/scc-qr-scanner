@@ -1,484 +1,380 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SCC QR Scanner - Desain iOS/App Native</title>
-<!-- Menggunakan CDN Tailwind untuk kelas utilitas dan estetika modern -->
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  /* Menetapkan font default yang mirip iOS dan styling dasar */
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-  :root { font-family: 'Inter', sans-serif; }
-  /* Gaya full-screen app-like */
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start; 
-    min-height: 100vh;
-    background-color: #f0f4f8;
-    padding: 0; /* Hapus padding default */
-  }
-  /* Gaya App Container (seperti layar iPhone) */
-  .card {
-    background: #ffffff;
-    padding: 0; /* Padding akan diberikan di dalam elemen anak */
-    width: 100%;
-    max-width: 480px; /* Batasan lebar seperti ponsel */
-    min-height: 100vh; /* Ambil seluruh tinggi viewport */
-    border-radius: 0; /* Hilangkan border-radius agar terlihat seamless dengan body */
-    box-shadow: none; /* Hilangkan shadow di mode full-screen */
-    display: flex;
-    flex-direction: column;
-  }
-  
-  /* Header dengan padding ala status bar mobile */
-  .app-header {
-    background-color: #ffffff;
-    padding: 1.5rem 1rem 0.75rem 1rem;
-    border-bottom: 1px solid #f0f4f8;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-  
-  h1 { 
-    color: #1e293b; 
-    font-size: 1.25rem; /* Lebih kecil dan elegan */
-    font-weight: 600; 
-    text-align: center; 
-    margin-bottom: 0.5rem; 
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBAC App - Siap Deploy</title>
+    <!-- CDN untuk Tailwind CSS (untuk styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CDN untuk React dan ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- CDN untuk Babel (mengizinkan browser membaca JSX di <script type="text/babel">) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  /* Konten utama */
-  .app-content {
-    padding: 1rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
+    <!-- CDN untuk Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  /* Gaya elemen kontrol */
-  select, input, button {
-    font-size: 1rem; /* Ukuran sentuh lebih besar */
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem; /* Rounded corners lebih halus */
-    transition: all 0.2s;
-    border: 1px solid #e5e7eb;
-    background-color: #f9fafb;
-    width: 100%;
-  }
+        // Atur log level ke Debug untuk melihat semua aktivitas Firebase di console
+        setLogLevel('debug');
 
-  /* Gaya Tombol Aksi */
-  button {
-    cursor: pointer;
-    border: none;
-    background-color: #007aff; /* Warna primer iOS Blue */
-    color: #fff;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3); /* Shadow iOS-like */
-  }
-  button:hover:not(:disabled) { 
-    background-color: #0056b3; 
-    box-shadow: 0 1px 2px rgba(0, 122, 255, 0.5); 
-    transform: none; /* iOS doesn't typically translate */
-  }
-  button:active:not(:disabled) { 
-    background-color: #004c99; 
-    transform: translateY(1px); /* Efek sentuhan */
-  }
-  button:disabled { 
-    background-color: #cbd5e1; 
-    color: #71717a; 
-    cursor: not-allowed; 
-    box-shadow: none;
-  }
-  
-  /* Grup tombol agar tetap rapi */
-  .controls-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  .controls-group .flex-grow {
-    flex-grow: 1;
-  }
+        // --- GLOBAL VARIABLES (Diambil dari lingkungan Canvas) ---
+        // Jika Anda menjalankan file ini di luar Canvas, Anda harus mengisi nilai-nilai ini secara manual
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'rbac-app-demo';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "API_KEY_ANDA", authDomain: "DOMAIN_ANDA", projectId: "PROJECT_ID_ANDA" /* ... lainnya */ };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // --- 1. INISIALISASI FIREBASE ---
+        window.app = initializeApp(firebaseConfig);
+        window.db = getFirestore(window.app);
+        window.auth = getAuth(window.app);
+        window.initialAuthToken = initialAuthToken; // Simpan untuk digunakan di kode Babel
 
-  label { font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 0.25rem; }
-  
-  /* Area Pemindai */
-  #reader {
-    width: 100%;
-    height: 350px; /* Lebih tinggi untuk fokus scanning */
-    background: #000;
-    border-radius: 1rem;
-    overflow: hidden;
-    border: 5px solid #007aff; /* Border biru iOS */
-    margin-bottom: 1rem;
-  }
-
-  /* Gaya Status */
-  .status {
-    padding: 0.75rem 1rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    border: none; /* Hilangkan border, hanya pakai warna background */
-  }
-  .status.loading { background-color: #ffcc0044; color: #8e6a00; }
-  .status.success { background-color: #34c75944; color: #006000; }
-  .status.error { background-color: #ff3b3044; color: #8e0000; }
-  
-  /* Area Log */
-  .log {
-    background-color: #f8fafc;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    font-family: monospace;
-    font-size: 0.75rem;
-    max-height: 150px;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    white-space: pre-wrap;
-  }
-</style>
+        // Export fungsi-fungsi Firebase ke window agar bisa diakses oleh kode Babel
+        window.FirebaseServices = {
+            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+            getFirestore, doc, onSnapshot, setLogLevel
+        };
+        window.GlobalConfig = { appId, initialAuthToken };
+    </script>
 </head>
 <body>
-<div class="card">
-<div class="app-header">
-  <h1>SCC QR Scanner — Resilient Mode</h1>
-</div>
-
-<div class="app-content">
-
-  <!-- Bagian Pemindaian dan Status -->
-  <div id="reader"></div>
-  <div id="statusLine" class="status loading">Menunggu library...</div>
-  
-  <!-- Kontrol Utama (Pilih Aksi) -->
-  <label class="flex flex-col">Aksi / Status Baru:
-    <select id="action">
-      <option>Picked Up</option>
-      <option>Start Work</option>
-      <option>Finish Work</option>
-      <option>Delivered</option>
-    </select>
-  </label>
-
-  <!-- Kontrol Kamera -->
-  <label class="flex flex-col">Kamera:
-    <select id="cameraSelect"><option value="">-- memuat --</option></select>
-  </label>
-
-  <!-- Grup Tombol Aksi -->
-  <div class="controls-group mt-2">
-    <button id="permBtn" class="bg-gray-400 hover:bg-gray-500">Cek Izin Kamera</button>
-    <div class="flex gap-2">
-      <button id="startBtn" disabled class="flex-grow">Mulai Pemindaian</button>
-      <button id="stopBtn" disabled class="flex-grow bg-red-500 hover:bg-red-600 shadow-none">Berhenti</button>
+    <div id="root">
+        <!-- Loader sederhana sebelum React dimuat -->
+        <div class="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <p class="mt-4 text-lg text-indigo-600">Memuat Aplikasi...</p>
+        </div>
     </div>
-  </div>
 
-  <!-- Debug & Fallback (Sekarang diaktifkan kembali) -->
-  <button id="loadLocalBtn" class="bg-gray-500 hover:bg-gray-700 mt-4 text-xs">Muat Library Lokal (Fallback)</button>
-  <div class="log" id="logArea"></div>
-</div>
+    <!-- Kode React/JSX dimuat melalui Babel -->
+    <script type="text/babel">
+        // Mengambil variabel global dan layanan Firebase dari window
+        const { useState, useEffect, createContext, useContext } = React;
+        const { appId, initialAuthToken } = window.GlobalConfig;
+        const { 
+            getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
+            signInWithEmailAndPassword, signOut, getFirestore, doc, onSnapshot 
+        } = window.FirebaseServices;
 
-</div>
+        const db = window.db;
+        const auth = window.auth;
 
-<script>
-/* ================= SCC QR Scanner — Versi Optimal ================= */
+        // Path Firestore untuk peran pengguna (sesuai aturan keamanan publik)
+        const getUserRoleDocRef = (userId) => {
+            // Path: /artifacts/{appId}/public/data/user_roles/{userId}
+            return doc(db, 'artifacts', appId, 'public', 'data', 'user_roles', userId);
+        };
 
-// URL CDN library html5-qrcode
-const CDNS = ["https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"];
+        // --- 2. CONTEXT UNTUK MANAJEMEN STATUS AUTH & ROLE ---
+        const AuthContext = createContext(null);
+        const useAuth = () => useContext(AuthContext);
 
-// ***********************************************************************************
-// URL WEB APP DEPLOYMENT GOOGLE APPS SCRIPT (Harus diganti dengan URL deployment Anda)
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5rW4yJLEm2bEv92-hQSEH06sxgA93dhGnhAzRR2cIM0mB6rTN3pBXwGf3hfbSplc1/exec'; 
-// ***********************************************************************************
+        // --- 3. KOMPONEN PENYEDIA (PROVIDER) AUTHENTIKASI ---
+        const AuthProvider = ({ children }) => {
+            const [user, setUser] = useState(null); 
+            const [role, setRole] = useState('loading'); 
+            const [isAuthReady, setIsAuthReady] = useState(false);
 
-let scanner = null;
-let isScanning = false;
+            useEffect(() => {
+                let unsubscribeRole = () => {};
+                
+                // --- 3a. Inisialisasi Auth Pertama Kali ---
+                const setupAuth = async () => {
+                    if (initialAuthToken) {
+                        try {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } catch (error) {
+                            console.error("Gagal masuk dengan token kustom:", error);
+                            await signInAnonymously(auth);
+                        }
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    setIsAuthReady(true);
+                };
 
-/**
- * Fungsi untuk mencatat pesan ke area log dan konsol.
- */
-const LOG = (s, l = 'i') => {
-    const el = document.getElementById('logArea');
-    const now = new Date().toLocaleTimeString('id-ID');
-    // Batasi jumlah log di UI agar tidak terlalu panjang
-    const newLog = document.createElement('div');
-    newLog.textContent = `${now} | ${s}`;
-    el.prepend(newLog);
-    if(el.children.length > 20) el.removeChild(el.lastChild);
-    
-    if (l === 'e') console.error(s);
-    else console.log(s);
-};
+                // Memastikan inisialisasi berjalan sekali
+                if (auth && !isAuthReady) {
+                    setupAuth();
+                }
 
-/**
- * Fungsi untuk memperbarui status di UI.
- */
-const setStatus = (txt, type = 'loading') => {
-    const el = document.getElementById('statusLine');
-    el.textContent = txt;
-    el.className = 'status ' + type;
-    LOG('STATUS: ' + txt);
-};
+                // --- 3b. Listener Perubahan Status Autentikasi (WAJIB) ---
+                const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+                    setUser(currentUser);
+                    
+                    unsubscribeRole(); 
 
-/**
- * Memuat skrip eksternal secara asinkron.
- */
-function loadScript(src) {
-    return new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = res;
-        s.onerror = rej;
-        document.head.appendChild(s);
-    });
-}
+                    if (currentUser) {
+                        const userDocRef = getUserRoleDocRef(currentUser.uid);
+                        
+                        unsubscribeRole = onSnapshot(userDocRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const userRole = docSnap.data().role || 'member';
+                                console.log(`Peran pengguna (UID: ${currentUser.uid}): ${userRole}`);
+                                setRole(userRole);
+                            } else {
+                                console.log(`Dokumen peran tidak ditemukan untuk UID: ${currentUser.uid}`);
+                                setRole('guest');
+                            }
+                        }, (error) => {
+                            console.error("Error mengambil peran dari Firestore:", error);
+                            setRole('guest');
+                        });
+                    } else {
+                        setRole('guest');
+                    }
+                });
 
-/**
- * Mempersiapkan fungsionalitas memuat library dari file lokal (fallback).
- * Listener dipasang di sini, dan dipanggil saat inisialisasi utama.
- */
-function attachLocalLoader() {
-    const localBtn = document.getElementById('loadLocalBtn');
-    if (localBtn) { 
-        localBtn.addEventListener('click', () => {
-            const f = document.createElement('input');
-            f.type = 'file';
-            f.accept = '.js';
-            f.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const blob = URL.createObjectURL(file);
+                return () => {
+                    unsubscribeAuth();
+                    unsubscribeRole();
+                };
+            }, []);
+
+            const contextValue = { user, role, isAuthReady, db, auth, appId };
+
+            // Hanya render children setelah auth selesai
+            if (!isAuthReady) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                        <p className="mt-4 text-lg text-indigo-600">Menunggu Autentikasi...</p>
+                    </div>
+                );
+            }
+
+            return (
+                <AuthContext.Provider value={contextValue}>
+                    {children}
+                </AuthContext.Provider>
+            );
+        };
+
+        // --- 4. KOMPONEN LOGIN ---
+        const LoginComponent = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+            const { auth } = useAuth();
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+
                 try {
-                    await loadScript(blob);
-                    setStatus('Library dimuat (lokal)', 'success');
-                    initAfterLib();
+                    await signInWithEmailAndPassword(auth, email, password);
                 } catch (err) {
-                    setStatus('Gagal memuat lokal', 'error');
-                    LOG('Gagal memuat library lokal: ' + err, 'e');
+                    console.error(err);
+                    let errorMessage = "Gagal Login. Cek Email dan Password Anda.";
+                    if (err.code === 'auth/user-not-found') {
+                        errorMessage = "Pengguna tidak ditemukan. Daftar atau cek kembali email.";
+                    } else if (err.code === 'auth/wrong-password') {
+                        errorMessage = "Password salah.";
+                    } else if (err.code === 'auth/invalid-email') {
+                         errorMessage = "Format Email tidak valid.";
+                    }
+                    setError(errorMessage);
+                } finally {
+                    setLoading(false);
                 }
             };
-            f.click();
-        });
-    }
-}
 
-/**
- * Fungsi deduplikasi: mencegah pengiriman ganda dalam waktu singkat (5 detik).
- * Adaptasi: Mengatasi keterbatasan double scan/re-scan yang cepat.
- */
-function dedupeCheck(code) {
-    const now = Date.now();
-    if (!window.recentScans) window.recentScans = new Map();
-    const last = window.recentScans.get(code) || 0;
+            return (
+                <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+                    <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:scale-[1.01]">
+                        <h2 className="text-3xl font-extrabold text-gray-800 text-center mb-6">Aplikasi RBAC Login</h2>
+                        <p className="text-sm text-center text-gray-500 mb-6">
+                            Gunakan <code>admin@example.com</code> atau <code>member@example.com</code>
+                        </p>
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    placeholder="contoh@domain.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input
+                                    type="password"
+                                    placeholder="********"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+                                    required
+                                />
+                            </div>
+                            {error && (
+                                <p className="text-sm text-red-600 bg-red-100 p-3 rounded-lg border border-red-200">{error}</p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full py-3 px-4 rounded-lg text-white font-semibold shadow-md transition duration-300 ease-in-out ${
+                                    loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800'
+                                }`}
+                            >
+                                {loading ? 'Memproses...' : 'Login'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
 
-    // Batas deduplikasi: 5 detik
-    if (now - last < 5000) return true;
+        // --- 5. KOMPONEN DASHBOARD ADMIN ---
+        const AdminDashboard = () => {
+            return (
+                <div className="p-8 bg-indigo-50 rounded-xl shadow-lg border-2 border-indigo-200">
+                    <div className="flex items-center space-x-3 text-indigo-700 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        <h1 className="text-3xl font-bold">Dashboard Admin</h1>
+                    </div>
+                    <p className="text-xl text-gray-700 mt-4">
+                        Selamat datang, Administrator! Anda memiliki akses penuh ke semua fitur.
+                    </p>
+                    <ul className="list-disc list-inside mt-4 space-y-2 text-gray-600">
+                        <li>Manajemen Pengguna (CRUD)</li>
+                        <li>Pengaturan Sistem Global</li>
+                        <li>Laporan Keuangan Rahasia</li>
+                    </ul>
+                </div>
+            );
+        };
 
-    window.recentScans.set(code, now);
+        // --- 6. KOMPONEN DASHBOARD MEMBER ---
+        const MemberDashboard = () => {
+            return (
+                <div className="p-8 bg-green-50 rounded-xl shadow-lg border-2 border-green-200">
+                     <div className="flex items-center space-x-3 text-green-700 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" />
+                        </svg>
+                        <h1 className="text-3xl font-bold">Dashboard Member</h1>
+                    </div>
+                    <p className="text-xl text-gray-700 mt-4">
+                        Selamat datang kembali! Anda dapat mengakses fitur dasar aplikasi.
+                    </p>
+                    <ul className="list-disc list-inside mt-4 space-y-2 text-gray-600">
+                        <li>Lihat Profil Saya</li>
+                        <li>Mengelola Data Pribadi</li>
+                        <li>Mengirim Feedback ke Admin</li>
+                    </ul>
+                </div>
+            );
+        };
 
-    // Hapus entri lama
-    for (const [k, t] of window.recentScans) if (now - t > 60000) window.recentScans.delete(k);
-
-    return false;
-}
-
-/**
- * Menangani keberhasilan pemindaian QR dan mengirim data ke Apps Script.
- */
-function onScanSuccess(decodedText) {
-    if (dedupeCheck(decodedText)) {
-        LOG('Duplikat diabaikan: ' + decodedText);
-        return;
-    }
-
-    LOG('QR Terdeteksi: ' + decodedText);
-
-    const action = document.getElementById('action').value;
-    const payload = JSON.stringify({ qr: decodedText, action: action });
-
-    // Status Awal: Menunjukkan pengiriman sedang berlangsung
-    setStatus('Mengirim data...', 'loading');
-
-    // Mengirim data ke Apps Script menggunakan fetch dan mode 'no-cors'.
-    // Ini mengasumsikan sukses jika tidak ada error jaringan, karena Apps Script akan memprosesnya.
-    fetch(GAS_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json' 
-        },
-        body: payload,
-        mode: 'no-cors' 
-    })
-    .then(() => {
-        // Asumsikan sukses
-        setStatus(`Data terkirim: ${action} (${decodedText.substring(0, 10)}...)`, 'loading');
-
-        // Tunda status sukses nyata untuk feedback visual yang lebih baik
-        setTimeout(() => {
-             setStatus(`Sukses! ${action} untuk ${decodedText.substring(0, 10)}.`, 'success');
-        }, 2000); 
-
-    })
-    .catch(error => {
-        // Ini hanya akan menangkap error jaringan murni (misalnya, tidak ada internet)
-        setStatus('Gagal terhubung ke server (jaringan murni)', 'error');
-        LOG('Error jaringan murni saat mengirim data: ' + error, 'e');
-    });
-}
-
-/**
- * Memulai pemindai.
- */
-async function startScanner(devId = null) {
-    if (typeof Html5Qrcode === 'undefined') {
-        setStatus('Library belum dimuat', 'error');
-        return;
-    }
-    if (isScanning) return;
-
-    // Prioritaskan kamera belakang/environment
-    const cfg = devId && devId !== "" ? { deviceId: { exact: devId } } : { facingMode: "environment" };
-    
-    const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 200 },
-        disableFlip: false 
-    };
-
-    scanner = new Html5Qrcode("reader");
-    setStatus('Memulai kamera...', 'loading');
-
-    try {
-        await scanner.start(cfg, config, onScanSuccess, (errMsg) => {
-            // Abaikan error pemindaian minor
-        });
-        isScanning = true;
-        document.getElementById('startBtn').disabled = true;
-        document.getElementById('stopBtn').disabled = false;
-        setStatus('Pemindai berjalan', 'success');
-    } catch (e) {
-        setStatus('Gagal memulai. Pastikan kamera dipilih dan diizinkan.', 'error');
-        LOG('Gagal memulai pemindai: ' + e, 'e');
-    }
-}
-
-/**
- * Menghentikan pemindai.
- */
-async function stopScanner() {
-    if (!isScanning || !scanner) return;
-    try {
-        await scanner.stop();
-        scanner.clear();
-    } catch (e) {
-        LOG('Error saat menghentikan pemindai: ' + e, 'e');
-    }
-    scanner = null;
-    isScanning = false;
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    setStatus('Pemindai dihentikan', 'loading');
-    LOG('Pemindai dihentikan');
-}
-
-/**
- * Mendaftarkan kamera yang tersedia dan memilih kamera belakang sebagai default.
- */
-async function listCameras() {
-    const sel = document.getElementById('cameraSelect');
-    sel.innerHTML = '<option value="">-- memuat --</option>'; 
-    
-    try {
-        const cams = await Html5Qrcode.getCameras();
-        sel.innerHTML = '';
-        let environmentCameraId = null;
-
-        cams.forEach((c, i) => {
-            const o = document.createElement('option');
-            o.value = c.id;
-            o.textContent = c.label || `Kamera ${i + 1}`;
-            sel.appendChild(o);
+        // --- 7. KOMPONEN UTAMA (MAIN APP) ---
+        const AppContent = () => {
+            const { user, role, auth } = useAuth();
+            const [isLoggingOut, setIsLoggingOut] = useState(false);
             
-            // Logika untuk memilih kamera belakang (environment) sebagai default
-            const labelLower = c.label.toLowerCase();
-            if (labelLower.includes('back') || labelLower.includes('environment') || labelLower.includes('belakang')) {
-                environmentCameraId = c.id;
-            }
-        });
+            let DashboardComponent = null;
+            let roleColor = 'text-gray-500';
 
-        if (environmentCameraId) {
-            sel.value = environmentCameraId;
-            LOG('Kamera belakang otomatis terpilih.');
-        } else if (cams.length > 0) {
-            sel.value = cams[0].id;
+            if (role === 'admin') {
+                DashboardComponent = AdminDashboard;
+                roleColor = 'text-indigo-600';
+            } else if (role === 'member') {
+                DashboardComponent = MemberDashboard;
+                roleColor = 'text-green-600';
+            } else {
+                // Biarkan DashboardComponent null jika peran adalah 'guest'
+            }
+
+            const handleLogout = async () => {
+                setIsLoggingOut(true);
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Gagal Logout:", error);
+                } finally {
+                    setIsLoggingOut(false);
+                }
+            };
+
+            if (user && role === 'loading') {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                        <p className="mt-4 text-lg text-indigo-600">Memuat data peran...</p>
+                    </div>
+                );
+            }
+            
+            if (!user || role === 'guest') {
+                return <LoginComponent />;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-6 md:p-10">
+                    <div className="flex justify-between items-center mb-10 pb-4 border-b border-gray-200">
+                        <h1 className="text-4xl font-extrabold text-gray-900">
+                            Sistem Kontrol Akses Berbasis Peran
+                        </h1>
+                        <div className="flex items-center space-x-4">
+                            <span className={`text-lg font-semibold ${roleColor}`}>
+                                Peran: {role.toUpperCase()}
+                            </span>
+                            <button
+                                onClick={handleLogout}
+                                disabled={isLoggingOut}
+                                className={`px-4 py-2 rounded-lg text-white font-medium transition duration-300 ease-in-out ${
+                                    isLoggingOut ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-md'
+                                }`}
+                            >
+                                {isLoggingOut ? 'Keluar...' : 'Logout'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-8">
+                        {DashboardComponent ? (
+                            <DashboardComponent />
+                        ) : (
+                            <div className="p-6 bg-yellow-100 rounded-xl border border-yellow-300 text-yellow-800">
+                                <p className="font-semibold">Peringatan: Peran {role} tidak dikenal atau tidak memiliki dashboard khusus.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Tampilkan detail teknis di bagian bawah */}
+                    <div className="mt-12 pt-8 border-t border-gray-200 text-sm text-gray-500">
+                        <p>UID Pengguna: <code className="bg-gray-200 p-1 rounded break-all">{user.uid}</code></p>
+                        <p>App ID: <code className="bg-gray-200 p-1 rounded">{appId}</code></p>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- KOMPONEN ROOT: Pembungkus Auth Provider ---
+        function App() {
+            return (
+                <AuthProvider>
+                    <AppContent />
+                </AuthProvider>
+            );
         }
 
-        document.getElementById('startBtn').disabled = false;
-
-    } catch (e) {
-        LOG('Gagal memuat daftar kamera. Periksa izin.', 'e');
-        sel.innerHTML = '<option value="">(Error Kamera)</option>';
-        document.getElementById('startBtn').disabled = true;
-    }
-}
-
-/**
- * Meminta izin kamera dari browser.
- */
-async function checkPermission() {
-    try {
-        // Meminta izin video
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        
-        // Hentikan stream setelah mendapatkan izin
-        stream.getTracks().forEach(track => track.stop()); 
-
-        setStatus('Izin kamera diberikan', 'success');
-        await listCameras();
-    } catch (e) {
-        setStatus('Izin kamera ditolak. Beri izin di pengaturan browser Anda.', 'error');
-        LOG('Izin kamera ditolak: ' + e.name, 'e');
-    }
-}
-
-/* ================= INISIALISASI DAN EVENT LISTENERS ================= */
-
-// Event Listeners
-document.getElementById('permBtn').addEventListener('click', () => checkPermission());
-document.getElementById('startBtn').addEventListener('click', () => startScanner(document.getElementById('cameraSelect').value));
-document.getElementById('stopBtn').addEventListener('click', () => stopScanner());
-document.getElementById('cameraSelect').addEventListener('change', () => {
-    if (isScanning) {
-        // Otomatis restart scanner jika kamera diubah saat sedang berjalan
-        stopScanner().then(() => startScanner(document.getElementById('cameraSelect').value));
-    }
-});
-
-// Fungsi yang dijalankan setelah library html5-qrcode berhasil dimuat
-async function initAfterLib() {
-    await checkPermission(); 
-}
-
-// Inisialisasi: Coba muat library
-(async () => {
-    try {
-        await loadScript(CDNS[0]);
-        setStatus('Library dimuat (CDN)', 'success');
-        initAfterLib();
-    } catch (e) {
-        let errMsg = e instanceof Event ? 'File CDN tidak dapat dimuat (kemungkinan masalah jaringan atau izin).' : e.toString();
-        // Mengubah pesan status untuk mengarahkan pengguna ke tombol fallback yang kini aktif
-        setStatus('CDN gagal. Coba "Muat Library Lokal" di bawah.', 'error'); 
-        LOG('Gagal memuat CDN: ' + errMsg, 'e');
-    }
-    // PENTING: Attach listener untuk Local Loader terlepas dari keberhasilan CDN
-    attachLocalLoader();
-})();
-</script>
+        // Render aplikasi ke DOM
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
 </body>
 </html>
