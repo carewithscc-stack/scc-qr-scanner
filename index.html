@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SCC QR Scanner</title>
+    <title>SCC QR Scanner Debug</title>
 
-    <!-- CDN WAJIB (tanpa ini kamera tidak bisa jalan) -->
+    <!-- DEBUG: cek apakah library berhasil dimuat -->
+    <script>
+        console.log("► Loading html5-qrcode CDN...");
+    </script>
+
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
+    <script>
+        console.log("► After loading CDN, Html5Qrcode =", typeof Html5Qrcode);
+    </script>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            text-align: center;
-        }
         #reader {
             width: 300px;
             margin: auto;
@@ -21,31 +24,56 @@
         }
         button {
             padding: 10px 20px;
-            font-size: 16px;
-            margin-top: 15px;
+            margin-top: 20px;
+            font-size: 18px;
         }
     </style>
-
 </head>
 <body>
 
     <h2>SCC QR Scanner</h2>
 
     <button id="startBtn">Start Kamera</button>
-
     <div id="reader"></div>
-
     <p id="result"></p>
 
     <script>
+        console.log("► Script utama dimuat");
+
         const startBtn = document.getElementById("startBtn");
-        const reader = document.getElementById("reader");
-        const resultText = document.getElementById("result");
+        console.log("► startBtn =", startBtn);
 
         startBtn.onclick = function () {
+            console.log("► Tombol Start DITEKAN");
+
+            const reader = document.getElementById("reader");
             reader.style.display = "block";
 
-            const html5QrCode = new Html5Qrcode("reader");
+            console.log("► Membuat instance Html5Qrcode...");
 
-            html5QrCode.start(
-                { facingMode: "environment" },
+            try {
+                const html5QrCode = new Html5Qrcode("reader");
+                console.log("► Instance berhasil dibuat!", html5QrCode);
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (qrCodeMessage) => {
+                        console.log("► QR Terdeteksi:", qrCodeMessage);
+                        result.innerHTML = qrCodeMessage;
+                    },
+                    (err) => {
+                        console.log("► Scan error:", err);
+                    }
+                ).catch(err => {
+                    console.error("► ERROR saat start kamera:", err);
+                });
+
+            } catch (e) {
+                console.error("► Instance gagal dibuat:", e);
+            }
+        };
+    </script>
+
+</body>
+</html>
