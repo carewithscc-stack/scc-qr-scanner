@@ -1,43 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SCC QR Scanner</title>
-
-  <!-- GUARANTEED WORKING CDN -->
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
-
-  <style>
-    body { font-family: Arial; padding: 20px; text-align: center; }
-    #reader { width: 100%; max-width: 350px; margin: 20px auto; }
-  </style>
 </head>
 <body>
-
-  <h2>SCC QR Scanner</h2>
-  <div id="reader"></div>
-  <div id="result"></div>
-
+  <h2>QR Scanner</h2>
+  <div id="reader" style="width:100%;max-width:400px;"></div>
   <script>
-    function onScanSuccess(decodedText) {
-      document.getElementById("result").innerText = "Scan: " + decodedText;
-    }
-
-    function onScanError(err) {
-      console.warn(err);
-    }
-
     const qr = new Html5Qrcode("reader");
-
-    qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      onScanSuccess,
-      onScanError
-    );
+    Html5Qrcode.getCameras().then(cams => {
+      if (!cams.length) return alert("No camera found");
+      qr.start(cams[0].id, {fps:10, qrbox:250}, result => {
+        alert("Scanned: " + result);
+      }).catch(e => console.error("Start failed:", e));
+    }).catch(e => console.error("Cameras error:", e));
   </script>
-
 </body>
 </html>
-`
