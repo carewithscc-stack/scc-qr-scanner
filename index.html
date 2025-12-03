@@ -79,4 +79,22 @@ setInterval(()=>{trySendNext();},15000);
 
 let scanner=null;let isScanning=false;const recentScans=new Map();const DEDUPE_WINDOW_MS=5000;
 function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
-async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try
+async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try{scanner.stop();}catch(e){}}scanner=null;isScanning=false;}}
+async function stopScanner(){if(scanner&&isScanning){await scanner.stop();scanner.clear();isScanning=false;document.getElementById('startBtn').disabled=false;document.getElementById('stopBtn').disabled=true;setStatus('Scanner stopped','loading');LOG('Scanner stopped');}}
+function onScanSuccess(decodedText,decodedResult){if(dedupeCheck(decodedText)){LOG('Duplicate scan ignored: '+decodedText);return;}LOG('QR Scanned: '+decodedText,'success');pushQueue({orderId:decodedText,action:document.getElementById('action').value});trySendNext();}
+function onScanFailure(error){}
+
+async function initAfterLib(){
+  const cams=await Html5Qrcode.getCameras().catch(e=>{LOG('Cannot get cameras: '+e,'e');return[];});
+  const sel=document.getElementById('cameraSelect');sel.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label;sel.appendChild(opt);});
+  if(cams.length>0){document.getElementById('startBtn').disabled=false;}
+  document.getElementById('permBtn').addEventListener('click',async()=>{try{await navigator.mediaDevices.getUserMedia({video:true});LOG('Camera access OK');setStatus('Camera access OK','success');}catch(e){LOG('Camera access denied','error');setStatus('Camera access denied','error');}});
+  document.getElementById('startBtn').addEventListener('click',()=>startScanner(sel.value)); 
+  document.getElementById('stopBtn').addEventListener('click',stopScanner);
+  attachLocalFileLoader();
+}
+
+(async()=>{if(await tryLoadCdns()){initAfterLib();}})();
+</script>
+</body>
+</html>
