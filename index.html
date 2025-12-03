@@ -1,28 +1,88 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCC QR Scanner</title>
+  <head>
+    <meta charset="UTF-8">
+    <title>SCC QR Scanner</title>
 
-<style>
-body { font-family: Arial; padding: 16px; }
-label { font-weight: bold; }
-video { width: 100%; max-width: 420px; border: 1px solid #ccc; margin-top: 12px; }
-button { padding: 10px 16px; margin-top: 10px; }
-#output { margin-top: 16px; font-size: 16px; font-weight: bold; color: green; }
-</style>
+    <!-- Load JS library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 
-<!-- ZXING DECODER -->
-<script src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      #reader {
+        width: 100%;
+        max-width: 350px;
+        margin-top: 20px;
+      }
+      select, button {
+        padding: 10px;
+        font-size: 16px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
 
-</head>
+  <body>
+    <h2>SCC QR Scanner</h2>
 
-<body>
+    <label for="action">Pilih aksi:</label><br>
+    <select id="action">
+      <option value="Picked Up">Picked Up</option>
+      <option value="Delivered">Delivered</option>
+    </select>
 
-<h2>SCC QR Scanner</h2>
+    <br><br>
 
-<label for="action">Pilih Aksi:</label>
-<select id="action">
-  <option value="Picked Up">Picked Up</option>
-  <option value="Start Work">Start Work</option>
-  <option value="Finish W
+    <button id="start">Start Camera</button>
+    <button id="stop">Stop Camera</button>
+
+    <div id="reader"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        let scanner = null;
+
+        const startBtn = document.getElementById("start");
+        const stopBtn = document.getElementById("stop");
+        const actionSelect = document.getElementById("action");
+
+        startBtn.addEventListener("click", () => {
+          if (scanner !== null) return;
+
+          scanner = new Html5Qrcode("reader");
+
+          scanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 }
+            },
+            (decodedText) => {
+              console.log("Scanned:", decodedText);
+
+              // Call Apps Script API (optional)
+              if (google?.script?.run) {
+                google.script.run.handleScan(decodedText, actionSelect.value);
+              }
+
+              alert("Scanned:\n" + decodedText);
+            },
+            (err) => {}
+          );
+        });
+
+        stopBtn.addEventListener("click", () => {
+          if (scanner) {
+            scanner.stop().then(() => {
+              scanner.clear();
+              scanner = null;
+            });
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
