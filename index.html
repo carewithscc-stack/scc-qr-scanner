@@ -1,88 +1,114 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SCC QR Scanner — Final Stable</title>
+<title>SCC QR Scanner</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;}
-  body{background:#f0f2f5;padding:20px;display:flex;justify-content:center;}
-  .scanner-card{background:#fff;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);padding:20px;max-width:420px;width:100%;}
-  h1{text-align:center;margin-bottom:15px;color:#222;font-size:22px;}
-  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
-  select,input,button{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;}
-  button{border:none;background:#111;color:#fff;cursor:pointer;font-weight:bold;transition:.2s;}
-  button:hover{background:#333;}
-  button:disabled{opacity:0.5;cursor:not-allowed;}
-  #reader{width:100%;height:260px;border-radius:12px;border:2px solid #444;box-shadow:0 4px 15px rgba(0,0,0,0.2);background:#000;margin-bottom:12px;overflow:hidden;}
-  .status{font-size:14px;margin-bottom:8px;padding:6px 10px;border-radius:8px;}
-  .status.loading{background:#fff8c6;color:#9a6f00;}
-  .status.success{background:#d4edda;color:#155724;}
-  .status.error{background:#f8d7da;color:#721c24;}
-  .log{background:#f7f7f7;padding:10px;border-radius:10px;font-family:monospace;font-size:12px;max-height:160px;overflow-y:auto;border:1px solid #eee;margin-top:8px;}
+    body { font-family: Arial, sans-serif; background:#111; color:white; padding:20px; }
+    button { padding:12px; margin:8px 0; font-size:16px; cursor:pointer; }
+    #reader { width:100%; max-width:400px; margin-top:20px; }
+    #log { margin-top:20px; white-space:pre-wrap; background:#222; padding:10px; }
 </style>
 </head>
-<body>
-<div class="scanner-card">
-  <h1>SCC QR Scanner — Final Stable</h1>
-  <div class="controls">
-    <label>Aksi:<br>
-      <select id="action">
-        <option>Picked Up</option>
-        <option>Start Work</option>
-        <option>Finish Work</option>
-        <option>Delivered</option>
-      </select>
-    </label>
-    <label>Kamera:<br>
-      <select id="cameraSelect"><option>Memuat...</option></select>
-    </label>
-    <button id="permBtn">Check Camera</button>
-    <button id="startBtn" disabled>Start</button>
-    <button id="stopBtn" disabled>Stop</button>
-    <button id="loadLocalBtn">Load Local JS</button>
-  </div>
 
-  <div id="reader"></div>
-  <div id="statusLine" class="status loading">Menunggu library...</div>
-  <div class="log" id="logArea"></div>
-  <label>Server Endpoint:</label>
-  <input id="endpoint" value="https://script.google.com/macros/s/YOUR_DEPLOYED_CODE_GS/exec">
-</div>
+<body>
+
+<h2>SCC QR Scanner</h2>
+
+<button id="loadLocalJsBtn">Load Local JS</button>
+<input type="file" id="localJsFile" accept=".js" style="display:none">
+
+<br><br>
+
+<button id="startCameraBtn" disabled>Start Camera</button>
+<select id="cameraList"></select>
+
+<div id="reader"></div>
+
+<div id="log">Log...</div>
 
 <script>
-const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
-const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
+let html5QrLoaded = false;
+let html5QrInstance = null;
+let scanning = false;
+let lastScan = "";
 
-const CDNS=[
-  "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js",
-  "https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"
-];
+function log(msg) {
+    document.getElementById("log").textContent += "\n" + msg;
+}
 
-function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.onload=()=>res();s.onerror=err=>rej(err);s.src=src;document.head.appendChild(s);});}
-async function tryLoadCdns(){for(const url of CDNS){try{setStatus('Loading library...');LOG('Trying CDN: '+url);await loadScript(url);await new Promise(r=>setTimeout(r,200));if(window.Html5Qrcode){setStatus('Library loaded (CDN)','success');LOG('Html5Qrcode loaded');return true;}else{LOG('Script loaded but Html5Qrcode undefined','e');}}catch(e){LOG('Failed CDN: '+e,'e');}}return false;}
-function attachLocalLoader(){document.getElementById('loadLocalBtn').onclick=()=>{const input=document.createElement('input');input.type='file';input.accept='.js';input.onchange=async(e)=>{const f=e.target.files[0];if(!f)return;setStatus('Loading local JS...','loading');const url=URL.createObjectURL(f);try{await loadScript(url);await new Promise(r=>setTimeout(r,200));if(window.Html5Qrcode){setStatus('Library loaded (local)','success');LOG('Html5Qrcode loaded from local');initAfterLib();}else{setStatus('Local JS loaded but Html5Qrcode undefined','error');LOG('Local JS undefined','e');}}catch(err){setStatus('Failed local JS','error');LOG(err.message||err,'e');}};input.click();};}
+document.getElementById("loadLocalJsBtn").onclick = () => {
+    document.getElementById("localJsFile").click();
+};
 
-let scanner=null,isScanning=false;let recentScans=new Map();const DEDUPE_MS=3000;
-function dedupe(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans)if(now-t>60000)recentScans.delete(k);return false;}
+document.getElementById("localJsFile").onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-async function startScanner(camId=null){if(!window.Html5Qrcode){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning)return;scanner=new Html5Qrcode("reader");try{const cfg=camId?{deviceId:{exact:camId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScan,onScanFail);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG(err.message||err,'e');setStatus('Failed start','error');}}
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        const script = document.createElement("script");
+        script.textContent = ev.target.result;
+        document.body.appendChild(script);
+        html5QrLoaded = true;
+        log("Local Html5Qrcode loaded.");
+        document.getElementById("startCameraBtn").disabled = false;
+    };
+    reader.readAsText(file);
+};
 
-function onScan(decodedText){if(dedupe(decodedText))return;LOG('QR: '+decodedText);fetch(document.getElementById('endpoint').value,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qr:decodedText,action:document.getElementById('action').value})}).then(r=>r.text().then(t=>LOG('Server response: '+t))).catch(err=>LOG('Send failed: '+err,'e'));}
-function onScanFail(err){}
+document.getElementById("startCameraBtn").onclick = async () => {
+    if (!html5QrLoaded) {
+        alert("Load Html5Qrcode JS dulu.");
+        return;
+    }
 
-async function stopScanner(){if(!scanner)return;try{await scanner.stop();await scanner.clear();}catch(e){LOG('Stop error: '+(e.message||e),'e');}scanner=null;isScanning=false;document.getElementById('startBtn').disabled=false;document.getElementById('stopBtn').disabled=true;setStatus('Scanner stopped','loading');}
+    if (!html5QrInstance) {
+        html5QrInstance = new Html5Qrcode("reader");
+    }
 
-async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>Memuat...</option>';try{const cams=await Html5Qrcode.getCameras();select.innerHTML='';cams.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(o);});}catch(err){LOG('Camera list failed: '+err,'e');select.innerHTML='<option value="">(camera error)</option>';}}
-async function checkPerm(){try{setStatus('Checking camera permission...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera OK','success');await listCameras();document.getElementById('startBtn').disabled=false;}catch(e){LOG('Camera permission denied','error');}}
+    const devices = await Html5Qrcode.getCameras();
+    const list = document.getElementById("cameraList");
+    list.innerHTML = "";
 
-document.getElementById('permBtn').onclick=()=>checkPerm();
-document.getElementById('startBtn').onclick=()=>startScanner(document.getElementById('cameraSelect').value);
-document.getElementById('stopBtn').onclick=()=>stopScanner();
+    devices.forEach((cam) => {
+        const opt = document.createElement("option");
+        opt.value = cam.id;
+        opt.textContent = cam.label;
+        list.appendChild(opt);
+    });
 
-function initAfterLib(){attachLocalLoader();checkPerm();}
-async function init(){setStatus('Loading library from CDN...','loading');const ok=await tryLoadCdns();if(!ok){setStatus('CDN failed, please load local JS','error');document.getElementById('loadLocalBtn').disabled=false;}else initAfterLib();}
-init();
+    const camId = list.value;
+
+    html5QrInstance.start(
+        camId,
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+    )
+    .then(() => {
+        scanning = true;
+        log("Camera started.");
+    })
+    .catch(err => log("Camera error: " + err));
+};
+
+async function onScanSuccess(decodedText) {
+    if (decodedText === lastScan) return;
+    lastScan = decodedText;
+
+    log("SCAN OK: " + decodedText);
+
+    await fetch(
+        "https://script.google.com/macros/s/AKfycbyJvluaqqe3J_suB8RBWMptb51Iw7msr3R1KDB204w0XoBaZwlcahDZzJKaY90fiBcw/exec",
+        {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({ qr: decodedText })
+        }
+    ).catch(err => log("POST ERROR: " + err));
+}
 </script>
+
 </body>
 </html>
