@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <title>SCC QR Scanner</title>
 
-<!-- BETTER CDN -->
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode"></script>
+<!-- FIXED & VERIFIED CDN (browser build, no exports error) -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
 
 <style>
   body { font-family: Arial; padding: 20px; }
@@ -32,6 +32,7 @@
     <option value="Picked Up">Picked Up</option>
     <option value="Delivered">Delivered</option>
   </select>
+
   <br><br>
 
   <button id="start">Start Camera</button>
@@ -47,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const stopBtn = document.getElementById("stop");
 
   startBtn.onclick = () => {
-    if (scanner !== null) return;
+    if (scanner) return;
 
     scanner = new Html5Qrcode("reader");
 
@@ -57,18 +58,16 @@ document.addEventListener("DOMContentLoaded", () => {
       (decodedText) => {
         alert("Scanned: " + decodedText);
       }
-    ).catch(err => {
-      alert("Camera error: " + err);
-    });
+    ).catch(err => alert("Camera error: " + err));
   };
 
   stopBtn.onclick = () => {
-    if (scanner) {
-      scanner.stop().then(() => {
-        scanner.clear();
-        scanner = null;
-      });
-    }
+    if (!scanner) return;
+
+    scanner.stop().then(() => {
+      scanner.clear();
+      scanner = null;
+    });
   };
 });
 </script>
