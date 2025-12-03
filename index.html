@@ -270,8 +270,17 @@
                 // Ini akan dipanggil jika kamera benar-benar gagal untuk start
                 if(html5QrcodeScanner && html5QrcodeScanner.getState() !== 2) { // State 2: Scanning
                     LOG("Gagal memulai kamera: " + errorMessage, 'e');
-                    setStatus('❌ Gagal memulai kamera. Mohon cek izin dan tekan "Cek & Mulai Ulang Kamera".', 'error');
-                    setReaderPlaceholder('GAGAL MEMULAI KAMERA. Cek izin browser Anda atau klik tombol "Cek & Mulai Ulang Kamera"');
+                    
+                    let statusText = '❌ Gagal memulai kamera. Mohon cek izin dan tekan "Cek & Mulai Ulang Kamera".';
+                    let readerText = 'GAGAL MEMULAI KAMERA. Cek izin browser Anda atau klik tombol "Cek & Mulai Ulang Kamera"';
+                    
+                    if (location.protocol !== 'https:') {
+                         statusText = '❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.';
+                         readerText = 'GAGAL. Akses via HTTPS diperlukan. Silakan coba lagi setelah mengaktifkan HTTPS.';
+                    }
+
+                    setStatus(statusText, 'error');
+                    setReaderPlaceholder(readerText);
                     html5QrcodeScanner = null;
                 }
             }, 
@@ -285,6 +294,11 @@
         cameraRestartBtn.disabled = true;
         
         try {
+            // Periksa HTTPS sebelum mencoba mendapatkan kamera (jika checkSecureContext belum di-call)
+            if (location.protocol !== 'https:') {
+                throw new Error('NonSecureContext: Camera access requires HTTPS protocol.');
+            }
+
             const cameras = await Html5Qrcode.getCameras();
             
             cameraSelect.innerHTML = '';
@@ -321,8 +335,18 @@
             }
         } catch (err) {
             LOG("Gagal mendapatkan kamera atau izin ditolak: " + err.toString(), 'e');
-            setStatus('❌ Izin kamera ditolak. Mohon aktifkan di pengaturan browser Anda.', 'error');
-            setReaderPlaceholder('IZIN DITOLAK. Klik "Cek & Mulai Ulang Kamera" atau periksa izin browser Anda.');
+            
+            let errorMessage = '❌ Izin kamera ditolak. Mohon aktifkan di pengaturan browser Anda.';
+            let readerMessage = 'IZIN DITOLAK. Klik "Cek & Mulai Ulang Kamera" atau periksa izin browser Anda.';
+
+            // Periksa jika kegagalan disebabkan oleh konteks non-aman
+            if (err.message.includes('NonSecureContext') || location.protocol !== 'https:') {
+                errorMessage = '❌ GAGAL: Aplikasi harus diakses via HTTPS untuk menggunakan kamera.';
+                readerMessage = 'GAGAL. Akses via HTTPS diperlukan. Silakan coba lagi setelah mengaktifkan HTTPS.';
+            }
+
+            setStatus(errorMessage, 'error');
+            setReaderPlaceholder(readerMessage);
             cameraSelect.disabled = true;
             cameraRestartBtn.disabled = false; // Tetap aktifkan agar user bisa mencoba lagi
         }
