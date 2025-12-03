@@ -59,6 +59,11 @@
         <select id="camera-select" disabled class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-600">
             <option value="">Tidak ada kamera terdeteksi</option>
         </select>
+        
+        <!-- Tombol baru untuk kontrol kamera -->
+        <button id="camera-restart-btn" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-150 ease-in-out text-sm">
+            Cek & Mulai Ulang Kamera
+        </button>
     </div>
 
     <!-- Area Status Aksi -->
@@ -117,6 +122,7 @@
     const actionButtons = document.querySelectorAll('.action-btn');
     const cameraSelect = document.getElementById('camera-select');
     const logAreaEl = document.getElementById('log-area');
+    const cameraRestartBtn = document.getElementById('camera-restart-btn');
 
     /* --- SISTEM LOGGING DAN STATUS --- */
 
@@ -225,6 +231,7 @@
     // Fungsi untuk mendaftarkan semua kamera dan memulai scanner
     async function setupCameraSelection() {
         setStatus('Mengecek ketersediaan kamera dan izin...');
+        cameraRestartBtn.disabled = true;
         
         try {
             const cameras = await Html5Qrcode.getCameras();
@@ -234,6 +241,7 @@
             if (cameras && cameras.length) {
                 setStatus(`Akses Diberikan. Ditemukan ${cameras.length} kamera.`, 'success');
                 cameraSelect.disabled = false;
+                cameraRestartBtn.disabled = false;
                 
                 let defaultCameraId = null;
                 
@@ -258,11 +266,13 @@
             } else {
                 setStatus('❌ Tidak ada kamera yang terdeteksi atau izin ditolak.', 'error');
                 cameraSelect.disabled = true;
+                cameraRestartBtn.disabled = false; // Tetap aktifkan agar user bisa mencoba lagi
             }
         } catch (err) {
             LOG("Gagal mendapatkan kamera atau izin ditolak: " + err.toString(), 'e');
             setStatus('❌ Izin kamera ditolak. Mohon aktifkan di pengaturan browser Anda.', 'error');
             cameraSelect.disabled = true;
+            cameraRestartBtn.disabled = false; // Tetap aktifkan agar user bisa mencoba lagi
         }
     }
 
@@ -310,6 +320,12 @@
         LOG(`Pilihan kamera diubah ke: ${e.target.options[e.target.selectedIndex].text}`);
         setStatus('Mengganti kamera...');
         initScanner(newCameraId);
+    });
+    
+    // Event listener untuk tombol Cek & Mulai Ulang Kamera
+    cameraRestartBtn.addEventListener('click', () => {
+        LOG('Tombol Cek & Mulai Ulang Kamera ditekan. Memulai ulang deteksi...');
+        setupCameraSelection();
     });
 
     // Menangani pemilihan aksi (button click)
