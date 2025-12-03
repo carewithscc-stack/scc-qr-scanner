@@ -13,7 +13,7 @@
   body {
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Mulai dari atas agar lebih baik di ponsel */
+    align-items: flex-start; 
     min-height: 100vh;
     background-color: #f0f4f8;
     padding: 1rem;
@@ -25,7 +25,7 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     padding: 1.5rem;
     width: 100%;
-    max-width: 480px; /* Batasi lebar maksimum */
+    max-width: 480px;
   }
   h1 { color: #1e293b; font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 1rem; }
   .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-bottom: 1rem; }
@@ -77,7 +77,7 @@
     max-height: 200px;
     overflow-y: auto;
     border: 1px solid #e2e8f0;
-    white-space: pre-wrap; /* Pastikan teks log tidak menyebabkan scroll horizontal */
+    white-space: pre-wrap;
   }
 </style>
 </head>
@@ -115,20 +115,22 @@
 
 // URL CDN library html5-qrcode
 const CDNS = ["https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"];
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyJvluaqqe3J_suB8RBWMptb51Iw7msr3R1KDB204w0XoBaZwlcahDZzJKaY90fiBcw/exec';
+
+// ***********************************************************************************
+// !!! PENTING: GANTI URL DI BAWAH INI DENGAN URL WEB APP DEPLOYMENT GAS ANDA YANG ASLI !!!
+// Setelah Anda "Deploy Ulang" Apps Script, salin URL Web App yang baru ke sini.
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyJvluaqqe3J_suB8RBWMptb51Iw7msr3R1KDB204w0XoBaZwlcahDZzJKaY90fiBcw/exec'; 
+// ***********************************************************************************
 
 let scanner = null;
 let isScanning = false;
 
 /**
  * Fungsi untuk mencatat pesan ke area log dan konsol.
- * @param {string} s - Pesan yang akan dicatat.
- * @param {string} l - Level log ('i' untuk info, 'e' untuk error).
  */
 const LOG = (s, l = 'i') => {
     const el = document.getElementById('logArea');
     const now = new Date().toLocaleTimeString();
-    // Tambahkan pesan baru di atas pesan lama
     el.textContent = `${now} ${s}\n` + el.textContent;
     if (l === 'e') console.error(s);
     else console.log(s);
@@ -136,8 +138,6 @@ const LOG = (s, l = 'i') => {
 
 /**
  * Fungsi untuk memperbarui status di UI.
- * @param {string} txt - Teks status.
- * @param {string} type - Tipe status ('loading', 'success', 'error').
  */
 const setStatus = (txt, type = 'loading') => {
     const el = document.getElementById('statusLine');
@@ -148,7 +148,6 @@ const setStatus = (txt, type = 'loading') => {
 
 /**
  * Memuat skrip eksternal secara asinkron.
- * @param {string} src - URL skrip.
  */
 function loadScript(src) {
     return new Promise((res, rej) => {
@@ -161,7 +160,7 @@ function loadScript(src) {
 }
 
 /**
- * Mempersiapkan fungsionalitas memuat library dari file lokal.
+ * Mempersiapkan fungsionalitas memuat library dari file lokal (fallback).
  */
 function attachLocalLoader() {
     document.getElementById('loadLocalBtn').addEventListener('click', () => {
@@ -186,9 +185,7 @@ function attachLocalLoader() {
 }
 
 /**
- * Fungsi deduplikasi: memeriksa apakah kode QR sudah dipindai dalam 5 detik terakhir.
- * @param {string} code - Kode QR yang dipindai.
- * @returns {boolean} True jika kode adalah duplikat.
+ * Fungsi deduplikasi: mencegah pengiriman ganda.
  */
 function dedupeCheck(code) {
     const now = Date.now();
@@ -200,15 +197,14 @@ function dedupeCheck(code) {
 
     window.recentScans.set(code, now);
 
-    // Hapus entri yang lebih dari 60 detik untuk menjaga Map tetap bersih
+    // Hapus entri lama
     for (const [k, t] of window.recentScans) if (now - t > 60000) window.recentScans.delete(k);
 
     return false;
 }
 
 /**
- * Menangani keberhasilan pemindaian QR.
- * @param {string} decodedText - Teks dari kode QR.
+ * Menangani keberhasilan pemindaian QR dan mengirim data ke Apps Script.
  */
 function onScanSuccess(decodedText) {
     if (dedupeCheck(decodedText)) {
@@ -218,34 +214,36 @@ function onScanSuccess(decodedText) {
 
     LOG('QR Terdeteksi: ' + decodedText);
 
-    // Kirim data ke Google Apps Script
     const action = document.getElementById('action').value;
     const payload = JSON.stringify({ qr: decodedText, action: action });
+
+    setStatus('Mengirim data...', 'loading');
 
     fetch(GAS_URL, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json' // Tambahkan header Content-Type
+            'Content-Type': 'application/json' 
         },
         body: payload
     })
-    .then(response => {
-        if (response.ok) {
-            LOG(`Data berhasil dikirim: ${decodedText} (${action})`, 'success');
-            // Jika Anda ingin membaca pesan sukses dari GAS, tambahkan:
-            // return response.json().then(data => LOG('Respon GAS: ' + JSON.stringify(data))); 
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'Success') {
+            setStatus(`Sukses: ${data.action} untuk ${data.orderId}`, 'success');
+            LOG(`Respon Server: ${data.result}`);
         } else {
-            LOG(`Gagal mengirim data (Status: ${response.status}): ${decodedText}`, 'e');
+            setStatus(`Gagal: ${data.message}`, 'error');
+            LOG(`Error Server: ${data.message}`, 'e');
         }
     })
     .catch(error => {
+        setStatus('Gagal terhubung ke server (jaringan)', 'error');
         LOG('Error jaringan saat mengirim data: ' + error, 'e');
     });
 }
 
 /**
- * Memulai pemindai dengan ID perangkat tertentu.
- * @param {string | null} devId - ID perangkat kamera.
+ * Memulai pemindai.
  */
 async function startScanner(devId = null) {
     if (typeof Html5Qrcode === 'undefined') {
@@ -254,11 +252,8 @@ async function startScanner(devId = null) {
     }
     if (isScanning) return;
 
-    // Gunakan konfigurasi 'deviceId' jika ID tersedia, jika tidak, coba 'environment'
-    // Catatan: devId kosong ('') akan diatasi oleh listCameras yang memilih default ID
     const cfg = devId && devId !== "" ? { deviceId: { exact: devId } } : { facingMode: "environment" };
     
-    // Konfigurasi pemindai: 10 FPS, kotak pemindaian 280x200
     const config = {
         fps: 10,
         qrbox: { width: 280, height: 200 },
@@ -269,9 +264,8 @@ async function startScanner(devId = null) {
     setStatus('Memulai kamera...', 'loading');
 
     try {
-        // Coba mulai pemindaian
         await scanner.start(cfg, config, onScanSuccess, (errMsg) => {
-            // function onScanError
+            // Abaikan error pemindaian minor untuk menjaga log tetap bersih
         });
         isScanning = true;
         document.getElementById('startBtn').disabled = true;
@@ -320,19 +314,18 @@ async function listCameras() {
             o.textContent = c.label || `Kamera ${i + 1}`;
             sel.appendChild(o);
             
-            // LOGIKA OPTIMAL: Coba identifikasi kamera belakang (environment)
+            // Logika untuk memilih kamera belakang (environment)
             const labelLower = c.label.toLowerCase();
             if (labelLower.includes('back') || labelLower.includes('environment') || labelLower.includes('belakang')) {
                 environmentCameraId = c.id;
             }
         });
 
-        // Tetapkan kamera belakang sebagai pilihan default jika ditemukan
+        // Tetapkan kamera belakang sebagai default
         if (environmentCameraId) {
             sel.value = environmentCameraId;
-            LOG('Kamera belakang otomatis terpilih sebagai default.');
+            LOG('Kamera belakang otomatis terpilih.');
         } else if (cams.length > 0) {
-            // Jika kamera belakang tidak dapat diidentifikasi, pilih kamera pertama
             sel.value = cams[0].id;
         }
 
@@ -350,14 +343,14 @@ async function listCameras() {
  */
 async function checkPermission() {
     try {
-        // Mencoba mendapatkan stream video untuk meminta izin
+        // Meminta izin video
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         
-        // Hentikan stream setelah mendapatkan izin agar lampu indikator mati
+        // Hentikan stream setelah mendapatkan izin
         stream.getTracks().forEach(track => track.stop()); 
 
         setStatus('Izin kamera diberikan', 'success');
-        await listCameras(); // Muat ulang daftar kamera dan atur default
+        await listCameras();
     } catch (e) {
         setStatus('Izin kamera ditolak. Beri izin di pengaturan browser Anda.', 'error');
         LOG('Izin kamera ditolak: ' + e.name, 'e');
@@ -366,31 +359,22 @@ async function checkPermission() {
 
 /* ================= INISIALISASI DAN EVENT LISTENERS ================= */
 
-// Event Listeners untuk tombol kontrol
+// Event Listeners
 document.getElementById('permBtn').addEventListener('click', () => checkPermission());
 document.getElementById('startBtn').addEventListener('click', () => startScanner(document.getElementById('cameraSelect').value));
 document.getElementById('stopBtn').addEventListener('click', () => stopScanner());
-
-// Event Listener untuk perubahan kamera: hentikan yang lama, mulai yang baru dengan ID yang dipilih
 document.getElementById('cameraSelect').addEventListener('change', () => {
-    const selectedDeviceId = document.getElementById('cameraSelect').value;
     if (isScanning) {
-        stopScanner().then(() => {
-            if (selectedDeviceId) {
-                 startScanner(selectedDeviceId);
-            }
-        });
+        stopScanner().then(() => startScanner(document.getElementById('cameraSelect').value));
     }
 });
 
 // Fungsi yang dijalankan setelah library html5-qrcode berhasil dimuat
 async function initAfterLib() {
-    // Jalankan checkPermission secara otomatis setelah library dimuat
-    // agar pengguna hanya perlu menekan "Start"
     await checkPermission(); 
 }
 
-// Inisialisasi: Coba muat library dari CDN, jika gagal, berikan opsi lokal
+// Inisialisasi: Coba muat library
 (async () => {
     try {
         await loadScript(CDNS[0]);
@@ -398,8 +382,10 @@ async function initAfterLib() {
         initAfterLib();
         attachLocalLoader();
     } catch (e) {
+        // PERBAIKAN: Tangani kesalahan [object Event] yang dihasilkan oleh s.onerror
+        let errMsg = e instanceof Event ? 'File CDN tidak dapat dimuat (kemungkinan masalah jaringan atau izin).' : e.toString();
         setStatus('CDN gagal. Coba "Muat Library Lokal".', 'error');
-        LOG('Gagal memuat CDN: ' + e, 'e');
+        LOG('Gagal memuat CDN: ' + errMsg, 'e');
         attachLocalLoader();
     }
 })();
