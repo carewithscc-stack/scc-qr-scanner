@@ -2,32 +2,32 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SCC Camera Test</title>
+<title>SCC Scanner</title>
+
+<style>
+body { font-family: Arial; padding: 16px; }
+label { font-weight: bold; }
+video { width: 100%; max-width: 420px; border: 1px solid #ccc; margin-top: 12px; }
+button { padding: 10px 16px; margin-top: 10px; }
+</style>
+
 </head>
+
 <body>
 
-<h2>SCC Camera Access Test</h2>
+<h2>SCC Scanner</h2>
 
-<video id="cam" autoplay playsinline style="width:100%;max-width:400px;border:1px solid #ccc"></video>
+<label for="action">Pilih Aksi:</label>
+<select id="action">
+  <option value="Picked Up">Picked Up</option>
+  <option value="Start Work">Start Work</option>
+  <option value="Finish Work">Finish Work</option>
+  <option value="Delivered">Delivered</option>
+</select>
 
-<script>
-async function startCam() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
-    });
+<br><br>
 
-    const video = document.getElementById("cam");
-    video.srcObject = stream;
+<button id="start">Start Camera</button>
+<button id="stop">Stop</button>
 
-  } catch (err) {
-    alert("Camera error: " + err);
-    console.log(err);
-  }
-}
-
-startCam();
-</script>
-
-</body>
-</html>
+<video id="cam" a
