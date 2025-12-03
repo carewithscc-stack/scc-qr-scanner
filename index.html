@@ -26,15 +26,40 @@
         .scanner-container {
             min-height: 250px; /* Tinggi minimum untuk area scanner */
         }
+        /* Style untuk video preview */
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .log-area {
+            font-family: monospace;
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
 
 <div class="p-4 sm:p-6 max-w-lg mx-auto">
-    <header class="text-center mb-6">
+    <header class="text-center mb-4">
         <h1 class="text-3xl font-extrabold text-blue-800">SCC Tracker</h1>
         <p class="text-gray-600 mt-1">Pindai QR Code & Perbarui Status</p>
     </header>
+    
+    <!-- Area Status Utama (Menggantikan #feedback) -->
+    <div id="status-feedback" class="p-4 rounded-xl text-center font-semibold mb-4 border border-gray-300 bg-gray-100 text-gray-700 transition duration-300">
+        Menunggu inisialisasi...
+    </div>
+
+    <!-- Area Kontrol Kamera dan Status Izin -->
+    <div id="camera-controls" class="bg-white p-4 rounded-xl shadow-lg mb-4">
+        <!-- Status Izin Kamera Dihapus, digabungkan ke #status-feedback -->
+
+        <label for="camera-select" class="block text-sm font-semibold text-gray-700 mb-2">Pilih Kamera (jika tersedia):</label>
+        <select id="camera-select" disabled class="w-full p-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-600">
+            <option value="">Tidak ada kamera terdeteksi</option>
+        </select>
+    </div>
 
     <!-- Area Status Aksi -->
     <div id="action-status" class="bg-white p-4 rounded-xl shadow-lg mb-6">
@@ -46,7 +71,7 @@
 
     <!-- Area Scanner -->
     <div id="scanner-area" class="scanner-container">
-        <div id="reader"></div>
+        <div id="reader"></div> 
     </div>
 
     <!-- Area Tombol Aksi -->
@@ -65,139 +90,298 @@
         </button>
     </div>
 
-    <!-- Area Pesan Feedback -->
-    <div id="feedback" class="mt-6 p-4 rounded-xl text-center font-semibold hidden transition duration-300"></div>
+    <!-- Area Log (Baru) -->
+    <div class="mt-6">
+        <p class="text-sm font-semibold text-gray-700 mb-2">Log Proses:</p>
+        <div id="log-area" class="log-area p-3 bg-gray-50 rounded-lg text-xs overflow-y-auto max-h-32 border border-gray-200">
+            <!-- Log akan muncul di sini -->
+        </div>
+    </div>
 
 </div>
 
 <script>
     // ***************************************************************
     // KONFIGURASI PENTING: URL DEPLOYMENT BARU ANDA
-    // Pastikan ini adalah URL yang benar-benar aktif:
     // ***************************************************************
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzze3zhwu_PZ13dyk96nauIXN__i0qOMkAhHwYmSKuw60cP3RWlM4XnQz8aT0r5hbwd/exec';
     // ***************************************************************
 
     let selectedAction = null;
     let html5QrcodeScanner = null;
-    const feedbackEl = document.getElementById('feedback');
+    let currentCameraId = null;
+    const DEBOUNCE_TIME_MS = 3000; // Waktu tunggu setelah scan/error
+
+    const statusFeedbackEl = document.getElementById('status-feedback');
     const selectedActionEl = document.getElementById('selected-action');
     const actionButtons = document.querySelectorAll('.action-btn');
+    const cameraSelect = document.getElementById('camera-select');
+    const logAreaEl = document.getElementById('log-area');
 
-    // Inisialisasi Scanner
-    function initScanner() {
-        if (!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", 
-                { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                /* verbose= */ false
-            );
-            html5QrcodeScanner.render(onScanSuccess, onScanError);
+    /* --- SISTEM LOGGING DAN STATUS --- */
+
+    /**
+     * Menambahkan pesan ke log area.
+     * @param {string} s - Pesan log.
+     * @param {string} l - Level: 'i' (info), 'e' (error), 'w' (warning).
+     */
+    const LOG = (s, l = 'i') => {
+        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        let prefix = '🔵'; // Info
+        if (l === 'e') { prefix = '🔴'; console.error(s); }
+        else if (l === 'w') { prefix = '🟡'; console.warn(s); }
+        else { console.log(s); }
+
+        const logEntry = document.createElement('div');
+        logEntry.innerHTML = `${prefix} [${now}] ${s}`;
+        
+        // Memasukkan log terbaru di bagian atas
+        if (logAreaEl.firstChild) {
+            logAreaEl.insertBefore(logEntry, logAreaEl.firstChild);
+        } else {
+            logAreaEl.appendChild(logEntry);
+        }
+        
+        // Batasi jumlah log untuk performa
+        while (logAreaEl.children.length > 20) {
+            logAreaEl.removeChild(logAreaEl.lastChild);
+        }
+    };
+
+    /**
+     * Memperbarui status utama di UI dengan warna yang sesuai.
+     * @param {string} txt - Teks status.
+     * @param {string} type - Tipe status: 'loading', 'success', 'error', 'warning', 'info'.
+     */
+    const setStatus = (txt, type = 'info') => {
+        // Hapus semua kelas warna yang mungkin ada
+        statusFeedbackEl.className = 'p-4 rounded-xl text-center font-semibold mb-4 transition duration-300';
+        
+        let tailwindClasses = '';
+
+        switch (type) {
+            case 'success':
+                tailwindClasses = 'bg-green-100 text-green-800 border-green-300';
+                break;
+            case 'error':
+                tailwindClasses = 'bg-red-100 text-red-800 border-red-300';
+                break;
+            case 'warning':
+                tailwindClasses = 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                break;
+            case 'loading':
+                tailwindClasses = 'bg-blue-100 text-blue-800 border-blue-300';
+                break;
+            case 'info':
+            default:
+                tailwindClasses = 'bg-gray-100 text-gray-700 border-gray-300';
+                break;
+        }
+
+        statusFeedbackEl.classList.add(...tailwindClasses.split(' '));
+        statusFeedbackEl.textContent = txt;
+        LOG(`STATUS: ${txt}`, type === 'error' ? 'e' : (type === 'warning' ? 'w' : 'i'));
+    };
+
+    /* --- LOGIKA SCANNER --- */
+
+    // Menghentikan dan membersihkan scanner
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            setStatus('Menghentikan scanner...');
+            html5QrcodeScanner.clear().then(() => {
+                html5QrcodeScanner = null; 
+                setStatus('Scanner dihentikan.', 'info');
+            }).catch(error => {
+                LOG("Gagal menghentikan scanner: " + error, 'e');
+                html5QrcodeScanner = null;
+                setStatus('Gagal menghentikan scanner.', 'error');
+            });
+        }
+    }
+    
+    // Inisialisasi Scanner dengan Camera ID tertentu
+    function initScanner(cameraId) {
+        stopScanner(); // Pastikan scanner lama dihentikan
+        
+        currentCameraId = cameraId;
+
+        const config = { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 }, 
+        };
+        const cameraConfig = cameraId ? { deviceId: { exact: cameraId } } : { facingMode: "environment" };
+
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            config, 
+            /* verbose= */ false
+        );
+
+        setStatus('Memulai kamera...');
+        html5QrcodeScanner.render(onScanSuccess, onScanError, cameraConfig);
+    }
+    
+    // Fungsi untuk mendaftarkan semua kamera dan memulai scanner
+    async function setupCameraSelection() {
+        setStatus('Mengecek ketersediaan kamera dan izin...');
+        
+        try {
+            const cameras = await Html5Qrcode.getCameras();
+            
+            cameraSelect.innerHTML = '';
+            
+            if (cameras && cameras.length) {
+                setStatus(`Akses Diberikan. Ditemukan ${cameras.length} kamera.`, 'success');
+                cameraSelect.disabled = false;
+                
+                let defaultCameraId = null;
+                
+                cameras.forEach(camera => {
+                    const option = document.createElement('option');
+                    option.value = camera.id;
+                    option.text = camera.label || `Kamera ${camera.id}`;
+                    cameraSelect.appendChild(option);
+                    
+                    // Coba tentukan kamera belakang (environment) sebagai default
+                    if (camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('environment')) {
+                        defaultCameraId = camera.id;
+                    }
+                });
+                
+                // Set kamera default yang paling baik (belakang), atau yang pertama
+                const finalCameraId = defaultCameraId || cameras[0].id;
+                cameraSelect.value = finalCameraId;
+                
+                LOG(`Memulai dengan kamera: ${cameraSelect.options[cameraSelect.selectedIndex].text}`);
+                initScanner(finalCameraId);
+            } else {
+                setStatus('❌ Tidak ada kamera yang terdeteksi atau izin ditolak.', 'error');
+                cameraSelect.disabled = true;
+            }
+        } catch (err) {
+            LOG("Gagal mendapatkan kamera atau izin ditolak: " + err.toString(), 'e');
+            setStatus('❌ Izin kamera ditolak. Mohon aktifkan di pengaturan browser Anda.', 'error');
+            cameraSelect.disabled = true;
         }
     }
 
+    // Fungsi deduplikasi untuk mencegah scan berulang dalam waktu singkat
+    function dedupeCheck(code){
+        const now = Date.now();
+        if(!window.recentScans) window.recentScans = new Map();
+        const last = window.recentScans.get(code) || 0;
+        
+        // Cek jika scan terjadi dalam 5 detik terakhir
+        if(now - last < 5000) return true; 
+        
+        window.recentScans.set(code, now);
+        return false;
+    }
+
+
     // Fungsi saat pemindaian berhasil
     function onScanSuccess(decodedText, decodedResult) {
-        if (!selectedAction) {
-            showFeedback('Peringatan: Silakan pilih salah satu aksi (Picked Up, Start Work, dll.) terlebih dahulu.', 'bg-yellow-100 text-yellow-800');
+        if (dedupeCheck(decodedText)){
+            LOG('QR Code diabaikan (Duplikasi dalam 5 detik): ' + decodedText, 'w');
             return;
         }
 
-        // Hentikan scanner setelah berhasil memindai
+        if (!selectedAction) {
+            stopScanner();
+            setStatus('Peringatan: Pilih salah satu aksi terlebih dahulu!', 'warning');
+            setTimeout(() => initScanner(currentCameraId), DEBOUNCE_TIME_MS); 
+            return;
+        }
+
         stopScanner();
-
-        // Tampilkan pesan loading
-        showFeedback(`Mengirim OrderID: ${decodedText} dengan aksi: ${selectedAction}...`, 'bg-blue-100 text-blue-800');
-
-        // Kirim data ke Google Apps Script
+        setStatus(`QR Diterima: ${decodedText}. Mengirim aksi: ${selectedAction}...`, 'loading');
         sendDataToAppsScript(decodedText, selectedAction);
     }
 
     // Fungsi saat scanner error
     function onScanError(errorMessage) {
-        // Tampilkan error jika ada masalah serius, tetapi biasanya ini adalah log debug
-        // console.error(`QR Code Scan Error: ${errorMessage}`);
+        // Biarkan error di console, ini normal terjadi saat scanner mencari QR
     }
 
-    // Fungsi untuk menghentikan dan merender ulang scanner (penting untuk menghindari loop)
-    function stopScanner() {
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.clear().catch(error => {
-                console.error("Gagal menghentikan scanner: ", error);
-            });
-            html5QrcodeScanner = null;
-        }
-    }
+    // Menangani pemilihan kamera baru
+    cameraSelect.addEventListener('change', (e) => {
+        const newCameraId = e.target.value;
+        LOG(`Pilihan kamera diubah ke: ${e.target.options[e.target.selectedIndex].text}`);
+        setStatus('Mengganti kamera...');
+        initScanner(newCameraId);
+    });
 
     // Menangani pemilihan aksi (button click)
     actionButtons.forEach(button => {
         button.addEventListener('click', (e) => {
             selectedAction = e.target.dataset.action;
 
-            // Reset tampilan tombol
             actionButtons.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
-            
-            // Tandai tombol yang terpilih
             e.target.classList.add('ring-4', 'ring-offset-2', 'ring-blue-500');
 
-            // Update status di UI
             selectedActionEl.textContent = selectedAction;
             selectedActionEl.classList.remove('bg-gray-200', 'text-gray-500', 'bg-red-200', 'text-red-800');
             selectedActionEl.classList.add('bg-blue-500', 'text-white');
             
-            showFeedback(`Aksi '${selectedAction}' terpilih. Silakan pindai QR Code.`, 'bg-blue-100 text-blue-800');
-
-            // Mulai ulang scanner jika belum berjalan
-            initScanner();
+            setStatus(`Aksi '${selectedAction}' terpilih. Siap memindai QR Code.`, 'info');
+            
+            // Jika scanner terhenti (misal setelah error/scan), aktifkan lagi
+            if (!html5QrcodeScanner) {
+                initScanner(currentCameraId);
+            }
         });
     });
 
-    // Fungsi untuk menampilkan pesan feedback
-    function showFeedback(message, className) {
-        feedbackEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800');
-        feedbackEl.classList.add(className);
-        feedbackEl.textContent = message;
-    }
-
     // Fungsi utama untuk mengirim data ke Apps Script
     async function sendDataToAppsScript(qrCode, action) {
-        const payload = {
-            qr: qrCode,
-            action: action
-        };
+        const payload = { qr: qrCode, action: action };
+        LOG('Mencoba mengirim data ke Apps Script...');
 
         try {
-            const response = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', // Penting untuk Apps Script Web App dari domain lain
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            // Karena mode: 'no-cors', kita hanya bisa berasumsi sukses jika fetch berhasil.
-            showFeedback(`✅ Sukses terkirim! Status '${action}' untuk OrderID '${qrCode}' telah diperbarui.`, 'bg-green-100 text-green-800');
+            // Retry logic dengan exponential backoff
+            for (let i = 0; i < 3; i++) {
+                try {
+                    await fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    LOG(`Pengiriman sukses pada percobaan ke-${i + 1}.`);
+                    break; 
+                } catch (e) {
+                    LOG(`Gagal kirim data (Percobaan ${i + 1}): ${e.message}`, 'w');
+                    if (i < 2) { 
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000)); 
+                    } else { 
+                        throw e; 
+                    }
+                }
+            }
+            setStatus(`✅ Sukses! Status '${action}' untuk OrderID '${qrCode}' telah diperbarui.`, 'success');
             
         } catch (error) {
-            console.error('Error saat mengirim data:', error);
-            showFeedback(`❌ Error saat koneksi: ${error.message}. Cek koneksi atau URL Apps Script.`, 'bg-red-100 text-red-800');
+            LOG('Error fatal saat koneksi/pengiriman: ' + error.message, 'e');
+            setStatus(`❌ Error: ${error.message}. Gagal terhubung ke Apps Script.`, 'error');
         } finally {
-            // Setelah proses selesai (sukses atau gagal), reset state
+            // Reset state dan mulai ulang scanner setelah delay
             setTimeout(() => {
                 selectedAction = null;
                 selectedActionEl.textContent = 'Pilih Aksi di Bawah';
                 selectedActionEl.classList.remove('bg-blue-500', 'text-white');
                 selectedActionEl.classList.add('bg-gray-200', 'text-gray-500');
                 actionButtons.forEach(btn => btn.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-500'));
-                initScanner(); // Mulai ulang scanner untuk pemindaian berikutnya
-            }, 3000); // Tunggu 3 detik sebelum reset
+                LOG('Resetting UI dan memulai ulang scanner.');
+                initScanner(currentCameraId); 
+            }, DEBOUNCE_TIME_MS); 
         }
     }
 
-    // Mulai Scanner saat halaman dimuat
+    // **INITIATION:** Mulai proses saat halaman dimuat
     window.onload = function() {
-        showFeedback('Pilih aksi untuk memulai pemindaian.', 'bg-gray-200 text-gray-700');
+        LOG('Aplikasi dimuat. Memulai inisialisasi.');
+        setupCameraSelection(); // Fungsi ini akan menginisialisasi scanner setelah kamera terdeteksi
     };
 </script>
 
