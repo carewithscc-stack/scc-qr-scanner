@@ -3,464 +3,162 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SCC QR Scanner — Robust</title>
+<title>SCC QR Scanner — Beauty Edition</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px;color:#111}
-  h1{font-size:20px;margin-bottom:6px}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-  select,input,button{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px}
-  button{background:#111;color:#fff;border:none;cursor:pointer}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  #reader{width:360px;height:260px;border-radius:8px;border:1px solid #ddd;overflow:hidden;background:#000}
-  .status{margin-top:10px;font-size:13px}
-  .log{white-space:pre-wrap;background:#f7f7f7;padding:10px;border-radius:8px;margin-top:10px;max-height:200px;overflow:auto;border:1px solid #eee}
-  .small{font-size:12px;color:#555}
-  .danger{color:#b00}
+  /* --- Reset & font --- */
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif;}
+  body{background:#f0f2f5;color:#111;padding:20px;display:flex;justify-content:center;}
+  
+  /* --- Container card --- */
+  .scanner-card{
+    background:#fff;
+    border-radius:15px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.15);
+    padding:20px;
+    max-width:420px;
+    width:100%;
+  }
+
+  h1{font-size:22px;margin-bottom:12px;text-align:center;color:#222;}
+
+  /* --- Controls --- */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:15px;}
+  .controls label{font-size:14px;color:#555;}
+  select,input{padding:10px;border-radius:8px;border:1px solid #ccc;font-size:14px;width:100%;}
+  button{
+    padding:10px 18px;border:none;border-radius:10px;
+    background:#111;color:#fff;font-weight:bold;font-size:14px;
+    cursor:pointer;transition:0.2s;
+  }
+  button:hover{background:#333;}
+  button:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* --- Camera feed --- */
+  #reader{
+    width:100%;height:260px;
+    border-radius:12px;
+    border:2px solid #444;
+    box-shadow:0 4px 15px rgba(0,0,0,0.2);
+    overflow:hidden;
+    background:#000;
+    margin-bottom:12px;
+  }
+
+  /* --- Status --- */
+  .status{
+    font-size:14px;
+    margin-bottom:8px;
+    padding:6px 10px;
+    border-radius:8px;
+  }
+  .status.loading{background:#fff8c6;color:#9a6f00;}
+  .status.success{background:#d4edda;color:#155724;}
+  .status.error{background:#f8d7da;color:#721c24;}
+
+  /* --- Pending & last send --- */
+  .small{font-size:12px;color:#555;margin-bottom:6px;display:flex;justify-content:space-between;}
+
+  /* --- Log --- */
+  .log{
+    background:#f7f7f7;
+    padding:10px;
+    border-radius:10px;
+    font-family:monospace;
+    font-size:12px;
+    max-height:160px;
+    overflow-y:auto;
+    border:1px solid #eee;
+  }
 </style>
 </head>
 <body>
 
-<h1>SCC QR Scanner — Robust Edition</h1>
-<div class="small">Developer: Vava · User: Bos Alva — versi tahan banting (CDN fallback, local fallback, queue & retry)</div>
+<div class="scanner-card">
+  <h1>SCC QR Scanner — Beauty Edition</h1>
 
-<section style="margin-top:12px">
   <div class="controls">
-    <label>
-      Aksi:
+    <label>Aksi:<br>
       <select id="action">
         <option>Picked Up</option>
         <option>Delivered</option>
       </select>
     </label>
 
-    <label>
-      Kamera:
+    <label>Kamera:<br>
       <select id="cameraSelect"><option>-- memuat --</option></select>
     </label>
 
-    <button id="permBtn">Check Camera Permission</button>
+    <button id="permBtn">Check Camera</button>
     <button id="startBtn" disabled>Start</button>
     <button id="stopBtn" disabled>Stop</button>
-    <button id="loadLocalBtn">Load local html5-qrcode.js</button>
+    <button id="loadLocalBtn">Load local JS</button>
   </div>
 
-  <div id="reader">Camera feed akan muncul di sini</div>
+  <div id="reader"></div>
 
-  <div class="status" id="statusLine">Status: <span id="status">menunggu library</span></div>
-  <div class="status small">Pending queue: <span id="pendingCount">0</span> • Last send: <span id="lastSend">-</span></div>
-
-  <div style="margin-top:8px">
-    <label class="small">Server endpoint (Google Apps Script URL):</label><br>
-    <input id="endpoint" style="width:100%" value="https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec" />
+  <div id="statusLine" class="status loading">Menunggu library...</div>
+  <div class="small">
+    <span>Pending: <span id="pendingCount">0</span></span>
+    <span>Last Send: <span id="lastSend">-</span></span>
   </div>
 
-  <div style="margin-top:8px" class="small">Jika CDN gagal, klik <strong>Load local html5-qrcode.js</strong> dan pilih file <code>html5-qrcode.min.js</code> dari komputer (download dari repo resmi).</div>
+  <label class="small">Server endpoint:</label>
+  <input id="endpoint" value="https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec">
 
   <div class="log" id="logArea"></div>
-</section>
+</div>
 
 <script>
-/* ==========================================================================
-   Robust loader + QR scanner app
-   - Multiple CDN attempts with timeout
-   - Local file fallback (user uploads html5-qrcode.min.js)
-   - Camera permission & device selection
-   - Single scanner instance, dedupe recent scans
-   - Local queue (localStorage) + retry with exponential backoff
-   ========================================================================== */
+/* ===========================
+  SCC QR Scanner — Robust + Beauty
+=========================== */
+const LOG=(s,l='i')=>{const el=document.getElementById('logArea');const now=(new Date()).toLocaleTimeString();el.textContent=`${now} ${s}\n`+el.textContent;if(l==='e')console.error(s);else console.log(s);};
+const setStatus=(txt,type='loading')=>{const el=document.getElementById('statusLine');el.textContent=txt;el.className='status '+type;LOG('STATUS: '+txt);};
 
-const LOG = (s, level='i') => {
-  const el = document.getElementById('logArea');
-  const now = (new Date()).toLocaleTimeString();
-  el.textContent = `${now} ${s}\n` + el.textContent;
-  // also console
-  if(level === 'e') console.error(s); else console.log(s);
-};
-
-const setStatus = txt => {
-  document.getElementById('status').textContent = txt;
-  LOG(`STATUS: ${txt}`);
-};
-
-// --- CDN list & loader with timeout ---
-const CDNS = [
+const CDNS=[
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js",
-  "https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js",
-  "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.6/minified/html5-qrcode.min.js"
+  "https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"
 ];
 
-function loadScriptWithTimeout(src, timeoutMs=10000){
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    let done = false;
-    const timer = setTimeout(() => {
-      if(done) return;
-      done = true;
-      s.onerror = s.onload = null;
-      s.remove();
-      reject(new Error('timeout'));
-    }, timeoutMs);
-    s.onload = () => {
-      if(done) return;
-      done = true;
-      clearTimeout(timer);
-      resolve();
-    };
-    s.onerror = (e) => {
-      if(done) return;
-      done = true;
-      clearTimeout(timer);
-      s.remove();
-      reject(e || new Error('load error'));
-    };
-    s.src = src;
-    document.head.appendChild(s);
-  });
-}
+function loadScriptWithTimeout(src,timeoutMs=10000){return new Promise((resolve,reject)=>{const s=document.createElement('script');let done=false;const timer=setTimeout(()=>{if(done)return;done=true;s.onerror=s.onload=null;s.remove();reject(new Error('timeout'));},timeoutMs);s.onload=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};s.onerror=(e)=>{if(done)return;done=true;clearTimeout(timer);s.remove();reject(e||new Error('load error'));};s.src=src;document.head.appendChild(s);});}
 
-async function tryLoadCdns(){
-  for(const url of CDNS){
-    try{
-      setStatus(`mencoba load library dari ${url}`);
-      LOG(`Mencoba CDN: ${url}`);
-      await loadScriptWithTimeout(url, 10000);
-      // small delay to ensure global registered
-      await new Promise(r=>setTimeout(r,200));
-      if(typeof window.Html5Qrcode !== 'undefined'){
-        LOG(`Html5Qrcode ditemukan setelah load ${url}`);
-        setStatus('library termuat (CDN)');
-        return true;
-      } else {
-        LOG(`Script terload tetapi Html5Qrcode undefined, melanjutkan fallback`);
-      }
-    }catch(err){
-      LOG(`Gagal load ${url} — ${err.message || err}`, 'e');
-    }
-  }
-  return false;
-}
+async function tryLoadCdns(){for(const url of CDNS){try{setStatus('Loading library...');LOG('Trying CDN: '+url);await loadScriptWithTimeout(url,10000);await new Promise(r=>setTimeout(r,200));if(typeof window.Html5Qrcode!=='undefined'){LOG('Html5Qrcode loaded from '+url);setStatus('Library loaded (CDN)','success');return true;}else{LOG('Script loaded but Html5Qrcode undefined, fallback...','e');}}catch(err){LOG('Failed CDN: '+err.message||err,'e');}}return false;}
 
-// Local-file loader: user chooses their own html5-qrcode.min.js
-function attachLocalFileLoader(){
-  const loadLocalBtn = document.getElementById('loadLocalBtn');
-  loadLocalBtn.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.js';
-    input.onchange = async (ev) => {
-      const f = ev.target.files[0];
-      if(!f) return;
-      setStatus('memuat library dari file lokal...');
-      const blobUrl = URL.createObjectURL(f);
-      try{
-        await loadScriptWithTimeout(blobUrl, 10000);
-        await new Promise(r=>setTimeout(r,200));
-        if(typeof window.Html5Qrcode !== 'undefined'){
-          setStatus('library termuat (lokal)');
-          LOG('Html5Qrcode termuat dari file lokal');
-          initAfterLib();
-        } else {
-          setStatus('file lokal dimuat tapi Html5Qrcode undefined');
-          LOG('File lokal dimuat tapi Html5Qrcode undefined', 'e');
-        }
-      }catch(err){
-        LOG('Gagal load file lokal: ' + (err.message || err), 'e');
-        setStatus('Gagal memuat file lokal');
-      }
-    };
-    input.click();
-  });
-}
+function attachLocalFileLoader(){document.getElementById('loadLocalBtn').addEventListener('click',()=>{const input=document.createElement('input');input.type='file';input.accept='.js';input.onchange=async(ev)=>{const f=ev.target.files[0];if(!f)return;setStatus('Loading local library...');const blobUrl=URL.createObjectURL(f);try{await loadScriptWithTimeout(blobUrl,10000);await new Promise(r=>setTimeout(r,200));if(typeof window.Html5Qrcode!=='undefined'){setStatus('Library loaded (local)','success');LOG('Html5Qrcode loaded from local');initAfterLib();}else{setStatus('Local file loaded but Html5Qrcode undefined','error');LOG('Local file loaded but Html5Qrcode undefined','e');}}catch(err){LOG('Failed load local: '+err.message||err,'e');setStatus('Failed loading local','error');}};input.click();});}
 
-// --------- Queue management (localStorage) ----------
-const QUEUE_KEY = 'scc_qr_queue_v1';
-function loadQueue(){ try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch(e){ return []; } }
-function saveQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); document.getElementById('pendingCount').textContent = q.length; }
-function pushQueue(item){
-  const q = loadQueue();
-  q.push(item);
-  saveQueue(q);
-}
-function shiftQueue(){
-  const q = loadQueue();
-  if(q.length===0) return null;
-  const it = q.shift();
-  saveQueue(q);
-  return it;
-}
+const QUEUE_KEY='scc_qr_queue_v1';
+function loadQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch(e){return[];}}
+function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));document.getElementById('pendingCount').textContent=q.length;}
+function pushQueue(item){const q=loadQueue();q.push(item);saveQueue(q);}
+function shiftQueue(){const q=loadQueue();if(q.length===0)return null;const it=q.shift();saveQueue(q);return it;}
 
-// retry loop state
-let retryTimer = null;
-let retryDelayBase = 2000; // ms
+let retryTimer=null;let retryDelayBase=2000;
+async function trySendNext(){const q=loadQueue();if(q.length===0){document.getElementById('pendingCount').textContent=0;return;}document.getElementById('pendingCount').textContent=q.length;const item=q[0];try{setStatus('Sending to server...','loading');LOG('Sending: '+JSON.stringify(item));const res=await fetch(document.getElementById('endpoint').value,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item),keepalive:true});if(res.ok){LOG('Server OK, removing from queue');item._sentAt=(new Date()).toISOString();shiftQueue();document.getElementById('lastSend').textContent=new Date().toLocaleString();retryDelayBase=2000;setTimeout(trySendNext,200);}else{LOG('Server non-OK: '+res.status,'e');scheduleRetry();}}catch(err){LOG('Failed send: '+(err.message||err),'e');scheduleRetry();}}
 
-async function trySendNext(){
-  const q = loadQueue();
-  if(q.length===0){
-    document.getElementById('pendingCount').textContent = 0;
-    return;
-  }
-  document.getElementById('pendingCount').textContent = q.length;
-  // attempt to send first item
-  const item = q[0];
-  try{
-    setStatus('mengirim data ke server...');
-    LOG('Mengirim ke server: ' + JSON.stringify(item));
-    const res = await fetch(document.getElementById('endpoint').value, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(item),
-      keepalive: true // helpful for page close, but not guaranteed
-    });
-    if(res.ok){
-      LOG('Server merespon OK, menghapus dari queue');
-      item._sentAt = (new Date()).toISOString();
-      shiftQueue();
-      document.getElementById('lastSend').textContent = new Date().toLocaleString();
-      // reset retry delay
-      retryDelayBase = 2000;
-      // continue with next immediately
-      setTimeout(trySendNext, 200);
-    } else {
-      LOG('Server merespon non-OK: ' + res.status, 'e');
-      scheduleRetry();
-    }
-  }catch(err){
-    LOG('Gagal mengirim ke server: ' + (err.message || err), 'e');
-    scheduleRetry();
-  }
-}
+function scheduleRetry(){if(retryTimer)return;const delay=Math.min(retryDelayBase,60000);LOG('Retry in '+delay/1000+'s');retryTimer=setTimeout(()=>{retryTimer=null;retryDelayBase=Math.min(retryDelayBase*1.8,60000);trySendNext();},delay);}
+setInterval(()=>{trySendNext();},15000);
 
-function scheduleRetry(){
-  if(retryTimer) return;
-  const delay = Math.min(retryDelayBase, 60000);
-  LOG(`Menjadwalkan retry dalam ${delay/1000}s`);
-  retryTimer = setTimeout(()=>{
-    retryTimer = null;
-    retryDelayBase = Math.min(retryDelayBase * 1.8, 60000);
-    trySendNext();
-  }, delay);
-}
+let scanner=null;let isScanning=false;const recentScans=new Map();const DEDUPE_WINDOW_MS=5000;
+function dedupeCheck(code){const now=Date.now();const last=recentScans.get(code)||0;if(now-last<DEDUPE_WINDOW_MS)return true;recentScans.set(code,now);for(const [k,t] of recentScans){if(now-t>60000)recentScans.delete(k);}return false;}
+async function startScanner(deviceId=null){if(typeof window.Html5Qrcode==='undefined'){LOG('Library not loaded','e');setStatus('Library not loaded','error');return;}if(isScanning){LOG('Scanner already running');return;}try{scanner=new Html5Qrcode("reader",{verbose:false});const cfg=deviceId?{deviceId:{exact:deviceId}}:{facingMode:"environment"};setStatus('Starting camera...','loading');await scanner.start(cfg,{fps:10,qrbox:{width:280,height:200}},onScanSuccess,onScanFailure);isScanning=true;document.getElementById('startBtn').disabled=true;document.getElementById('stopBtn').disabled=false;setStatus('Scanner running','success');LOG('Scanner started');}catch(err){LOG('Failed start: '+(err.message||err),'e');setStatus('Failed start: '+(err.message||err),'error');if(scanner){try{scanner.clear();}catch(e){}scanner=null;isScanning=false;}}}
 
-// expand send attempts periodically while app running
-setInterval(() => {
-  trySendNext();
-}, 15000); // setiap 15s coba kirim lagi
+function onScanSuccess(decodedText,decodedResult){if(dedupeCheck(decodedText)){LOG('Duplicate scan ignored: '+decodedText);return;}LOG('QR detected: '+decodedText);const payload={qr:decodedText,action:document.getElementById('action').value,user:'Bos Alva',ts:(new Date()).toISOString()};pushQueue(payload);document.getElementById('pendingCount').textContent=loadQueue().length;trySendNext();if(scanner && typeof scanner.pause==='function'){try{scanner.pause(true);setTimeout(()=>{try{scanner.resume();}catch(e){}},900);}catch(e){}}}
+function onScanFailure(err){}
 
-// ---------- Scanner app logic ----------
-let scanner = null;
-let isScanning = false;
-const recentScans = new Map(); // code -> timestamp, to dedupe
-const DEDUPE_WINDOW_MS = 5000; // ignore same code within 5s
+async function stopScanner(){if(!isScanning||!scanner){LOG('Stop requested but scanner not running');return;}try{await scanner.stop();}catch(e){LOG('Stop error: '+(e.message||e),'e');}try{scanner.clear();}catch(e){}scanner=null;isScanning=false;document.getElementById('startBtn').disabled=false;document.getElementById('stopBtn').disabled=true;setStatus('Scanner stopped','loading');LOG('Scanner stopped');}
 
-function dedupeCheck(code){
-  const now = Date.now();
-  const last = recentScans.get(code) || 0;
-  if(now - last < DEDUPE_WINDOW_MS) return true;
-  recentScans.set(code, now);
-  // purge old keys occasionally
-  for(const [k,t] of recentScans){
-    if(now - t > 60000) recentScans.delete(k);
-  }
-  return false;
-}
+async function listCameras(){const select=document.getElementById('cameraSelect');select.innerHTML='<option>memuat...</option>';try{if(window.Html5Qrcode && typeof Html5Qrcode.getCameras==='function'){const cams=await Html5Qrcode.getCameras();if(cams && cams.length){select.innerHTML='';cams.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.label||`Camera ${select.length+1}`;select.appendChild(opt);});return;}}const devices=await navigator.mediaDevices.enumerateDevices();const videoInputs=devices.filter(d=>d.kind==='videoinput');if(videoInputs.length){select.innerHTML='';videoInputs.forEach((d,i)=>{const opt=document.createElement('option');opt.value=d.deviceId;opt.textContent=d.label||`Camera ${i+1}`;select.appendChild(opt);});}else{select.innerHTML='<option value="">(no camera found)</option>';}}catch(err){LOG('Failed enum devices: '+(err.message||err),'e');select.innerHTML='<option value="">(camera error)</option>';}}
+async function checkPermission(){try{setStatus('Checking camera permission...','loading');await navigator.mediaDevices.getUserMedia({video:true});setStatus('Camera permission granted','success');await listCameras();document.getElementById('startBtn').disabled=false;}catch(err){LOG('Camera permission denied: '+(err.message||err),'e');setStatus('Camera permission denied','error');document.getElementById('startBtn').disabled=true;try{await listCameras();}catch(e){}}}
 
-async function startScanner(deviceId=null){
-  if(typeof window.Html5Qrcode === 'undefined'){
-    LOG('Start request tetapi library belum ada', 'e');
-    setStatus('library belum dimuat');
-    return;
-  }
-  if(isScanning){
-    LOG('Scanner sudah berjalan, ignore start');
-    return;
-  }
-  try{
-    scanner = new Html5Qrcode(/* element id */ "reader", { verbose: false });
-    const cfg = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" };
-    setStatus('memulai kamera...');
-    await scanner.start(
-      cfg,
-      { fps: 10, qrbox: { width: 280, height: 200 } },
-      onScanSuccess,
-      onScanFailure
-    );
-    isScanning = true;
-    document.getElementById('startBtn').disabled = true;
-    document.getElementById('stopBtn').disabled = false;
-    setStatus('scanner berjalan');
-    LOG('Scanner started');
-  }catch(err){
-    LOG('Gagal start scanner: ' + (err.message || err), 'e');
-    setStatus('Gagal memulai kamera: ' + (err.message || err));
-    if(scanner){
-      try{ scanner.clear(); }catch(e){}
-      scanner = null;
-      isScanning = false;
-    }
-  }
-}
-
-function onScanSuccess(decodedText, decodedResult){
-  if(dedupeCheck(decodedText)){
-    LOG('Duplicate scan ignored: ' + decodedText);
-    return;
-  }
-  LOG('QR detected: ' + decodedText);
-  // push to queue with metadata
-  const payload = {
-    qr: decodedText,
-    action: document.getElementById('action').value,
-    user: 'Bos Alva',
-    ts: (new Date()).toISOString()
-  };
-  pushQueue(payload);
-  document.getElementById('pendingCount').textContent = loadQueue().length;
-  // optional immediate send attempt
-  trySendNext();
-  // UX: brief pause to avoid multi-triggers
-  if(scanner && typeof scanner.pause === 'function'){
-    try{
-      scanner.pause(true);
-      setTimeout(()=>{ try { scanner.resume(); } catch(e){} }, 900);
-    }catch(e){}
-  }
-}
-
-function onScanFailure(err){
-  // intentionally quiet: scanning often reports non-fatal "no QR" errors
-  // LOG('Scan failure: ' + err); // debug only
-}
-
-// stop scanner cleanly
-async function stopScanner(){
-  if(!isScanning || !scanner){
-    LOG('Stop requested, tapi scanner tidak berjalan');
-    return;
-  }
-  try{
-    await scanner.stop();
-  }catch(e){
-    LOG('Error saat stop: ' + (e.message || e), 'e');
-  }
-  try{
-    scanner.clear();
-  }catch(e){}
-  scanner = null;
-  isScanning = false;
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('stopBtn').disabled = true;
-  setStatus('scanner berhenti');
-  LOG('Scanner stopped');
-}
-
-// ---------- Camera device enumeration ----------
-async function listCameras(){
-  const select = document.getElementById('cameraSelect');
-  select.innerHTML = '<option>memuat...</option>';
-  // prefer Html5Qrcode.getCameras if available
-  try{
-    if(window.Html5Qrcode && typeof Html5Qrcode.getCameras === 'function'){
-      const cams = await Html5Qrcode.getCameras();
-      if(cams && cams.length){
-        select.innerHTML = '';
-        cams.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.label || `Camera ${select.length+1}`;
-          select.appendChild(opt);
-        });
-        return;
-      }
-    }
-    // fallback to enumerateDevices
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoInputs = devices.filter(d => d.kind === 'videoinput');
-    if(videoInputs.length){
-      select.innerHTML = '';
-      videoInputs.forEach((d,i)=> {
-        const opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = d.label || `Camera ${i+1}`;
-        select.appendChild(opt);
-      });
-    } else {
-      select.innerHTML = '<option value="">(no camera found)</option>';
-    }
-  }catch(err){
-    LOG('Gagal enum devices: ' + (err.message || err), 'e');
-    select.innerHTML = '<option value="">(camera error)</option>';
-  }
-}
-
-// ---------- permission check ----------
-async function checkPermission(){
-  try{
-    setStatus('memeriksa izin kamera...');
-    // request minimal permission to get labels
-    await navigator.mediaDevices.getUserMedia({ video: true });
-    setStatus('izin kamera diberikan');
-    await listCameras();
-    document.getElementById('startBtn').disabled = false;
-  }catch(err){
-    LOG('Izin kamera ditolak/gagal: ' + (err.message || err), 'e');
-    setStatus('izin kamera belum diberikan');
-    document.getElementById('startBtn').disabled = true;
-    // still try to list devices (labels may be hidden)
-    try{ await listCameras(); }catch(e){}
-  }
-}
-
-// ---------- Wire UI ----------
-document.getElementById('permBtn').addEventListener('click', () => checkPermission());
-document.getElementById('startBtn').addEventListener('click', () => {
-  const camId = document.getElementById('cameraSelect').value || null;
-  startScanner(camId);
-});
-document.getElementById('stopBtn').addEventListener('click', () => stopScanner());
-document.getElementById('cameraSelect').addEventListener('change', () => {
-  if(isScanning){
-    LOG('Switch camera requested; restarting scanner with new device');
-    stopScanner().then(()=> startScanner(document.getElementById('cameraSelect').value));
-  }
-});
-
-// attach local file loader button
+document.getElementById('permBtn').addEventListener('click',()=>checkPermission());
+document.getElementById('startBtn').addEventListener('click',()=>{const camId=document.getElementById('cameraSelect').value||null;startScanner(camId);});
+document.getElementById('stopBtn').addEventListener('click',()=>stopScanner());
+document.getElementById('cameraSelect').addEventListener('change',()=>{if(isScanning){LOG('Switch camera requested');stopScanner().then(()=>startScanner(document.getElementById('cameraSelect').value));}});
 attachLocalFileLoader();
 
-// ---------- init: try load CDNs, else wait for local file ----------
-async function init(){
-  setStatus('mencoba load library dari CDN...');
-  const ok = await tryLoadCdns();
-  if(ok){
-    initAfterLib();
-  } else {
-    setStatus('gagal load CDN — silakan klik "Load local html5-qrcode.js"');
-    LOG('Semua CDN gagal — tunggu file lokal atau cek koneksi');
-    // enable local loader button (already available)
-    document.getElementById('loadLocalBtn').disabled = false;
-  }
-}
-
-function initAfterLib(){
-  setStatus('siap — library tersedia');
-  // enable UI
-  document.getElementById('loadLocalBtn').disabled = false;
-  // list cameras (may require permission)
-  listCameras().catch(e=>LOG('listCameras error: '+e,'e'));
-  // load pending queue count
-  document.getElementById('pendingCount').textContent = loadQueue().length;
-  // enable start if permission already ok
-  navigator.permissions && navigator.permissions.query({name:'camera'}).then(p => {
-    if(p.state === 'granted') document.getElementById('startBtn').disabled = false;
-  }).catch(()=>{ /* ignore */ });
-  // attempt sending pending queue immediately
-  trySendNext();
-  setStatus('siap — lakukan Check Camera Permission lalu Start');
-}
-
-// kick off
+async function init(){setStatus('Loading library from CDN...','loading');const ok=await tryLoadCdns();if(ok){initAfterLib();}else{setStatus('Failed CDN — use local file','error');LOG('All CDN failed');document.getElementById('loadLocalBtn').disabled=false;}}
+function initAfterLib(){setStatus('Ready — library loaded','success');document.getElementById('loadLocalBtn').disabled=false;listCameras().catch(e=>LOG('listCameras error: '+e,'e'));document.getElementById('pendingCount').textContent=loadQueue().length;trySendNext();}
 init();
-
 </script>
 
 </body>
