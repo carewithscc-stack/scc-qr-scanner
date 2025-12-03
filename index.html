@@ -126,7 +126,8 @@
     let selectedAction = null;
     let html5QrcodeScanner = null;
     let currentCameraId = null;
-    const DEBOUNCE_TIME_MS = 3000; // Waktu tunggu setelah scan/error
+    const DEBOUNCE_TIME_MS = 1500; // Mengurangi dari 3000ms ke 1500ms agar restart/reset UI lebih cepat
+    const DEDUPE_TIME_MS = 5000; // Waktu tunggu untuk mencegah scan QR Code yang sama berulang.
 
     const statusFeedbackEl = document.getElementById('status-feedback');
     const selectedActionEl = document.getElementById('selected-action');
@@ -333,8 +334,8 @@
         if(!window.recentScans) window.recentScans = new Map();
         const last = window.recentScans.get(code) || 0;
         
-        // Cek jika scan terjadi dalam 5 detik terakhir
-        if(now - last < 5000) return true; 
+        // Cek jika scan terjadi dalam DEDUPE_TIME_MS terakhir
+        if(now - last < DEDUPE_TIME_MS) return true; 
         
         window.recentScans.set(code, now);
         return false;
