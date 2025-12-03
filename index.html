@@ -5,8 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SCC QR Scanner</title>
 
-  <!-- Stable CDN Html5 QR Code -->
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+  <!-- Fallback CDN: pertama jsDelivr, kedua unpkg -->
+  <script>
+    function loadHtml5Qrcode(callback) {
+      const cdn1 = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.7/minified/html5-qrcode.min.js";
+      const cdn2 = "https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js";
+
+      function loadScript(src, onload, onerror) {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = onload;
+        s.onerror = onerror;
+        document.head.appendChild(s);
+      }
+
+      loadScript(cdn1, () => { console.log("Html5Qrcode loaded via jsDelivr"); callback(); }, () => {
+        console.warn("jsDelivr failed, trying unpkg...");
+        loadScript(cdn2, () => { console.log("Html5Qrcode loaded via unpkg"); callback(); }, () => {
+          alert("Gagal memuat Html5Qrcode library. Coba cek koneksi internet.");
+        });
+      });
+    }
+  </script>
 
   <style>
     body {
@@ -52,13 +72,8 @@
   <div id="reader"></div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      console.log("🔧 DOM ready, Html5Qrcode type:", typeof Html5Qrcode);
-
-      if (typeof Html5Qrcode === "undefined") {
-        alert("Html5Qrcode library belum dimuat! Coba refresh halaman.");
-        return;
-      }
+    loadHtml5Qrcode(() => {
+      console.log("🔧 Html5Qrcode siap digunakan");
 
       let scanner = null;
 
@@ -80,7 +95,6 @@
           (decodedText) => {
             console.log("✅ QR FOUND:", decodedText);
 
-            // Kirim hasil ke Google Apps Script
             fetch(
               "https://script.google.com/macros/s/AKfycbwRSTGLtEI54Y5HxiZlDqSQbcO8VITtAj7susY-H6GWY3GOJubwEkDWNfpp4IOGzsoO/exec",
               {
