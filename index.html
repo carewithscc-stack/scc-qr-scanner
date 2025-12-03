@@ -248,15 +248,28 @@
         
         setReaderPlaceholder('Memulai kamera... (Izinkan akses jika diminta)');
 
+        // Konfigurasi Video Constraints untuk stabilitas (mengatasi forced close di mobile)
+        let videoConstraints = {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "environment" // Default: Prioritaskan kamera belakang
+        };
+
+        if (cameraId) {
+            // Jika ID spesifik dipilih, gunakan ID tersebut dan hapus facingMode
+            videoConstraints.deviceId = { exact: cameraId };
+            delete videoConstraints.facingMode;
+        }
+
         const config = { 
             fps: 10, 
             qrbox: { width: 250, height: 250 }, 
+            videoConstraints: videoConstraints // Tambahkan constraints ke constructor config
         };
-        const cameraConfig = cameraId ? { deviceId: { exact: cameraId } } : { facingMode: "environment" };
-
+        
         html5QrcodeScanner = new Html5QrcodeScanner(
             "reader", 
-            config, 
+            config, // Gunakan config yang diperbarui dengan videoConstraints
             /* verbose= */ false
         );
 
@@ -283,8 +296,8 @@
                     setReaderPlaceholder(readerText);
                     html5QrcodeScanner = null;
                 }
-            }, 
-            cameraConfig
+            }
+            // Tidak perlu argumen ketiga (cameraConfig) lagi, karena constraints sudah ada di constructor config
         );
     }
     
@@ -294,7 +307,7 @@
         cameraRestartBtn.disabled = true;
         
         try {
-            // Periksa HTTPS sebelum mencoba mendapatkan kamera (jika checkSecureContext belum di-call)
+            // Periksa HTTPS sebelum mencoba mendapatkan kamera
             if (location.protocol !== 'https:') {
                 throw new Error('NonSecureContext: Camera access requires HTTPS protocol.');
             }
